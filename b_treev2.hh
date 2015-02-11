@@ -1,11 +1,15 @@
 #include <vector>
 #include <utility>
+#include <iostream>
+#include <math.h>
 
 class B_tree {
     public:
         void * root_node; //it should be B_tree_node. Avoid cyclical definition
         B_tree(unsigned short);
         ~B_tree();
+        void draw_tree();
+        void insert_entry(int value);
 };
 
 class B_tree_node {
@@ -61,43 +65,13 @@ B_tree_node::~B_tree_node(){
 }
 
 void B_tree_node::insert(B_tree_node * new_node, int location){
-    if (children.size() == 0) {
-        children.push_back(new_node);
-    } else {
-        std::vector<B_tree_node *> new_vec(children.size() + 1);
-        for (int i = 0; i<children.size(); i++){
-            if (i < location) {
-                new_vec[i] = children[i];
-            } else if (i == location) {
-                new_vec[i] = new_node;
-                new_vec[i+1] = children[i];
-            } else {
-                new_vec[i+1] = children[i];
-            }
-        }
-        children = new_vec;
-    }
-
+    std::vector<B_tree_node *>::iterator it = children.begin() + location;
+    children.insert(it, new_node);
 }
 
 void B_tree_node::insert(int new_val, int location){
-    if (values.size() == 0) {
-        values.push_back(new_val);
-    } else {
-        std::vector<int> new_vec(values.size() + 1);
-        for (int i = 0; i<values.size(); i++){
-            if (i < location) {
-                new_vec[i] = values[i];
-            } else if (i == location) {
-                new_vec[i] = new_val;
-                new_vec[i+1] = values[i];
-            } else {
-                new_vec[i+1] = values[i];
-            }
-        }
-        values = new_vec;
-    }
-
+    std::vector<int>::iterator it = values.begin() + location;
+    values.insert(it, new_val);
 }
 
 std::pair<B_tree_node *, int> B_tree_node::find_position(int new_value) {
@@ -108,42 +82,60 @@ std::pair<B_tree_node *, int> B_tree_node::find_position(int new_value) {
         if (values[i] > new_value) {
             //We can never have two nodes with the same value as per specification.
             candidate_position = i;
+            break;
         }
     }
 
-    if (children.size() == 0){
-        return std::pair<B_tree_node *, int>(this, candidate_position);
-    } else {
+    if (children.size() != 0){
         return children[candidate_position]->find_position(new_value);
+    } else {
+        return std::pair<B_tree_node *, int>(this, candidate_position);
     }
 
 }
 
 void B_tree_node::split() {
-    if (values.size() < max_elem){
+    if (values.size() <= max_elem){
         //No need to split the node. It's balanced.
         return;
     }
 
-    int middle_idx = values.size()/2; //Integer division here
+    int middle_idx = values.size()/2; //Integer division here, always right
 
     //We if we need to split we take our current node to become the left node
     //by trimming it and we will create a new node which will be the right node
     //from the elements that we previously cut out.
 
+    //Calculate middle index for children. Different cases for odd and even
+    //We can't use (children.size() + 1)/2 because children.size() can be 0
+    int child_mid_idx;
+    if (children.size() % 2 == 0) {
+        //Even values:
+        child_mid_idx = children.size()/2;
+    } else {
+        child_mid_idx = (children.size()/2) + 1;
+    }
+
     //Save the middle value;
     int middle_value = values[middle_idx];
+
 
     //Create the right node
     B_tree_node * right_node = new B_tree_node(max_elem, parent);
 
-    //Populate it
-    std::copy(values.begin() + middle_idx + 1, values.end(), right_node->values.begin());
-    std::copy(children.begin() + middle_idx, children.end(), right_node->children.begin());
+    //populate it.
+    for (std::vector<int>::iterator it = values.begin() + middle_idx + 1; it != values.end(); it++){
+        right_node->values.push_back(*it);
+    }
+    
+    for (std::vector<B_tree_node *>::iterator it = children.begin() + child_mid_idx; it != children.end(); it++){
+        (*it)->parent = right_node;
+        right_node->children.push_back(*it);
+    }
 
     //Trim the left node.
     this->values.resize(middle_idx);
-    this->children.resize(middle_idx+1);
+    this->children.resize(child_mid_idx);
 
     //Assign parent node and change root if necessary
     if (parent == nullptr) {
@@ -152,6 +144,8 @@ void B_tree_node::split() {
         new_root->insert(middle_value, 0);
 
         this->is_root = false;
+        new_root->container = this->container;
+        new_root->container->root_node = reinterpret_cast<void *>(new_root);
         this->container = nullptr;
         this->parent = new_root;
         right_node->parent = new_root;
@@ -164,11 +158,13 @@ void B_tree_node::split() {
         //Find the location of the middle_value in the parent
         int new_location = parent->values.size();
         for (int i = 0; i< parent->values.size(); i++) {
-            if (parent->values.size() > middle_value) {
-                new_location = middle_value;
+            if (parent->values[i] > middle_value) {
+                new_location = i;
+                break;
             }
         }
         //insert the middle_value and the right node (the left was there beforehand)
+        std::cout << "Middle value: " << middle_value << " Location: " << new_location << std::endl;
         parent->insert(middle_value, new_location);
         parent->insert(right_node, new_location+1);
 
@@ -177,4 +173,33 @@ void B_tree_node::split() {
     }
 
 
+}
+
+void B_tree::insert_entry(int value) {
+    B_tree_node * root = reinterpret_cast<B_tree_node *>(root_node);
+    std::pair<B_tree_node *, int> position = root->find_position(value);
+    position.first->insert(value, position.second);
+    position.first->split();
+}
+
+void print_node(B_tree_node * node) {
+    std::cout << std::endl << "Node_ID: " << node << std::endl;
+    if (node->parent) {
+        std::cout << "Parent is: " << node->parent;
+    }
+    std::cout << " Num keys: " << node->values.size();
+    std::cout << " Num children: " << node-> children.size();
+    std::cout << " Values: ";
+    for (unsigned short i = 0; i<node->values.size(); i++) {
+        std::cout << node->values[i] << ' ';
+    }
+    for (unsigned short i = 0; i<node->children.size(); i++) {
+        print_node(node->children[i]);
+    }
+
+}
+
+void B_tree::draw_tree() {
+    //Draws what is currently in the tree. For debugging purposes
+    print_node(reinterpret_cast<B_tree_node *>(root_node));
 }
