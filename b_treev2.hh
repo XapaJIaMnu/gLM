@@ -2,6 +2,7 @@
 #include <utility>
 #include <iostream>
 #include <math.h>
+#include <fstream>
 
 class B_tree {
     public:
@@ -10,6 +11,7 @@ class B_tree {
         ~B_tree();
         void draw_tree();
         void insert_entry(int value);
+        void produce_graph(const char * filename);
 };
 
 class B_tree_node {
@@ -164,7 +166,6 @@ void B_tree_node::split() {
             }
         }
         //insert the middle_value and the right node (the left was there beforehand)
-        std::cout << "Middle value: " << middle_value << " Location: " << new_location << std::endl;
         parent->insert(middle_value, new_location);
         parent->insert(right_node, new_location+1);
 
@@ -202,4 +203,30 @@ void print_node(B_tree_node * node) {
 void B_tree::draw_tree() {
     //Draws what is currently in the tree. For debugging purposes
     print_node(reinterpret_cast<B_tree_node *>(root_node));
+}
+
+void draw_node(B_tree_node * node, std::ofstream& filehandle, int num_child) {
+
+    filehandle << "node" << node << "[label = \"<f0> ";
+    for (int i = 0; i<node->values.size(); i++) {
+        filehandle << '|' << node->values[i] << '|' << "<f" << (i + 1) << '>';
+    }
+    filehandle << "\"];\n";
+    if (num_child != -1) {
+        //Root has children but has no parents so it has no incoming connections
+        //Otherwise draw the connection
+        filehandle << "\"node" << node->parent << "\":f" <<  num_child  << " -> \"node" << node << "\"\n";
+    }
+    for (int i = 0; i < node->children.size(); i++) {
+        draw_node(node->children[i], filehandle, i);
+    }
+}
+
+void B_tree::produce_graph(const char * filename) {
+    std::ofstream graphfile;
+    graphfile.open(filename);
+    graphfile << "digraph g {\nnode [shape = record,height=.1];\n";
+    draw_node(reinterpret_cast<B_tree_node *>(root_node), graphfile, -1);
+    graphfile << "}\n";
+    graphfile.close();
 }
