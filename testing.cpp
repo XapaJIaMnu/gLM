@@ -1,7 +1,7 @@
-#include "b_tree.h"
+#include "structs.h"
+#include <iostream>
 
 int main() {
-    B_tree * pesho = new B_tree(2);
     Entry A = {10, nullptr, false};
     Entry B = {15, nullptr, false};
     Entry D = {16, nullptr, false};
@@ -11,17 +11,10 @@ int main() {
     Entry H = {22, nullptr, false};
     Entry I = {35, nullptr, false};
 
-    pesho->insert_Entry(A);
-    pesho->insert_Entry(B);
-    std::cout << "Here" << std::endl;
-    pesho->insert_Entry(D);
-    pesho->insert_Entry(E);
-    std::cout << "Here too" << std::endl;
-    pesho->insert_Entry(F);
-    pesho->insert_Entry(G);
-    pesho->insert_Entry(H);
-    pesho->insert_Entry(I);
-    //pesho->insert_Entry(A);
-    pesho->draw_tree();
-    delete pesho;
+    std::cout << (A < B) << std::endl;
+    std::cout << (E == D) << std::endl;
+    std::cout << (10 == A) << std::endl;
+    std::cout << (G == 22) << std::endl;
+    std::cout << (B > 5) << std::endl;
+
 }

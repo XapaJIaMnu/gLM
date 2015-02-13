@@ -3,6 +3,7 @@
 #include <iostream>
 #include <math.h>
 #include <fstream>
+#include "structs.h"
 
 class B_tree {
     public:
@@ -10,7 +11,7 @@ class B_tree {
         B_tree(unsigned short);
         ~B_tree();
         void draw_tree();
-        void insert_entry(int value);
+        void insert_entry(Entry value);
         void produce_graph(const char * filename);
 };
 
@@ -18,7 +19,7 @@ class B_tree_node {
     
     public:
         unsigned short max_elem;
-        std::vector<int> values;
+        std::vector<Entry> words;
         std::vector<B_tree_node *> children;
         B_tree_node * parent;
         B_tree * container; //Accessible only from the root node
@@ -30,8 +31,8 @@ class B_tree_node {
         ~B_tree_node();
         //Insertion to vector location is index to be inserted (before the old one)
         void insert(B_tree_node * new_node, int location);
-        void insert(int new_val, int location);
-        std::pair<B_tree_node *, int> find_position(int new_value);
+        void insert(Entry new_val, int location);
+        std::pair<B_tree_node *, int> find_position(Entry new_value);
         void split();
 };
 
@@ -60,7 +61,7 @@ B_tree_node::B_tree_node(unsigned short num_max_elem, B_tree * container_orig) {
 }
 
 B_tree_node::~B_tree_node(){
-    values.clear();
+    words.clear();
     for (int i = 0; i < children.size(); i++) {
         delete children[i];
     }
@@ -71,17 +72,17 @@ void B_tree_node::insert(B_tree_node * new_node, int location){
     children.insert(it, new_node);
 }
 
-void B_tree_node::insert(int new_val, int location){
-    std::vector<int>::iterator it = values.begin() + location;
-    values.insert(it, new_val);
+void B_tree_node::insert(Entry new_val, int location){
+    std::vector<Entry>::iterator it = words.begin() + location;
+    words.insert(it, new_val);
 }
 
-std::pair<B_tree_node *, int> B_tree_node::find_position(int new_value) {
+std::pair<B_tree_node *, int> B_tree_node::find_position(Entry new_value) {
 
-    int candidate_position = values.size(); //Assume last position
+    int candidate_position = words.size(); //Assume last position
 
-    for (int i = 0; i < values.size(); i++){
-        if (values[i] > new_value) {
+    for (int i = 0; i < words.size(); i++){
+        if (words[i] > new_value) {
             //We can never have two nodes with the same value as per specification.
             candidate_position = i;
             break;
@@ -97,12 +98,12 @@ std::pair<B_tree_node *, int> B_tree_node::find_position(int new_value) {
 }
 
 void B_tree_node::split() {
-    if (values.size() <= max_elem){
+    if (words.size() <= max_elem){
         //No need to split the node. It's balanced.
         return;
     }
 
-    int middle_idx = values.size()/2; //Integer division here, always right
+    int middle_idx = words.size()/2; //Integer division here, always right
 
     //We if we need to split we take our current node to become the left node
     //by trimming it and we will create a new node which will be the right node
@@ -112,22 +113,22 @@ void B_tree_node::split() {
     //We can't use (children.size() + 1)/2 because children.size() can be 0
     int child_mid_idx;
     if (children.size() % 2 == 0) {
-        //Even values:
+        //Even words:
         child_mid_idx = children.size()/2;
     } else {
         child_mid_idx = (children.size()/2) + 1;
     }
 
     //Save the middle value;
-    int middle_value = values[middle_idx];
+    Entry middle_value = words[middle_idx];
 
 
     //Create the right node
     B_tree_node * right_node = new B_tree_node(max_elem, parent);
 
     //populate it.
-    for (std::vector<int>::iterator it = values.begin() + middle_idx + 1; it != values.end(); it++){
-        right_node->values.push_back(*it);
+    for (std::vector<Entry>::iterator it = words.begin() + middle_idx + 1; it != words.end(); it++){
+        right_node->words.push_back(*it);
     }
     
     for (std::vector<B_tree_node *>::iterator it = children.begin() + child_mid_idx; it != children.end(); it++){
@@ -136,7 +137,7 @@ void B_tree_node::split() {
     }
 
     //Trim the left node.
-    this->values.resize(middle_idx);
+    this->words.resize(middle_idx);
     this->children.resize(child_mid_idx);
 
     //Assign parent node and change root if necessary
@@ -158,9 +159,9 @@ void B_tree_node::split() {
         //We are done, the tree is balanced and split;
     } else {
         //Find the location of the middle_value in the parent
-        int new_location = parent->values.size();
-        for (int i = 0; i< parent->values.size(); i++) {
-            if (parent->values[i] > middle_value) {
+        int new_location = parent->words.size();
+        for (int i = 0; i< parent->words.size(); i++) {
+            if (parent->words[i] > middle_value) {
                 new_location = i;
                 break;
             }
@@ -176,7 +177,7 @@ void B_tree_node::split() {
 
 }
 
-void B_tree::insert_entry(int value) {
+void B_tree::insert_entry(Entry value) {
     B_tree_node * root = reinterpret_cast<B_tree_node *>(root_node);
     std::pair<B_tree_node *, int> position = root->find_position(value);
     position.first->insert(value, position.second);
@@ -188,11 +189,11 @@ void print_node(B_tree_node * node) {
     if (node->parent) {
         std::cout << "Parent is: " << node->parent;
     }
-    std::cout << " Num keys: " << node->values.size();
+    std::cout << " Num keys: " << node->words.size();
     std::cout << " Num children: " << node-> children.size();
-    std::cout << " Values: ";
-    for (unsigned short i = 0; i<node->values.size(); i++) {
-        std::cout << node->values[i] << ' ';
+    std::cout << " words: ";
+    for (unsigned short i = 0; i<node->words.size(); i++) {
+        std::cout << node->words[i].value << ' ';
     }
     for (unsigned short i = 0; i<node->children.size(); i++) {
         print_node(node->children[i]);
@@ -208,8 +209,8 @@ void B_tree::draw_tree() {
 void draw_node(B_tree_node * node, std::ofstream& filehandle, int num_child) {
 
     filehandle << "node" << node << "[label = \"<f0> ";
-    for (int i = 0; i<node->values.size(); i++) {
-        filehandle << '|' << node->values[i] << '|' << "<f" << (i + 1) << '>';
+    for (int i = 0; i<node->words.size(); i++) {
+        filehandle << '|' << node->words[i].value << '|' << "<f" << (i + 1) << '>';
     }
     filehandle << "\"];\n";
     if (num_child != -1) {
