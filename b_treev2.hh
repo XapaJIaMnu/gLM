@@ -4,6 +4,8 @@
 #include <math.h>
 #include <fstream>
 #include "structs.h"
+#include <set>
+#include <iterator>
 
 class B_tree {
     public:
@@ -34,6 +36,68 @@ class B_tree_node {
         void insert(Entry new_val, int location);
         std::pair<B_tree_node *, int> find_position(Entry new_value);
         void split();
+};
+
+//For testing only, quite ugly. Do not use for anything else!
+//Behaviour is undefined if we try to increment past the number of elements contained.
+class Pseudo_btree_iterator {
+    private:
+        unsigned short cur_item;
+        B_tree_node * cur_node;
+        void find_order(){ //find which child we are.
+            for (unsigned short i = 0; i < cur_node->parent->children.size(); i++) {
+                if (cur_node->parent->children[i] == cur_node){
+                    cur_item = i;
+                };
+            }
+        }
+
+    public:
+        Pseudo_btree_iterator (B_tree_node * root) : cur_item(0), cur_node(root) {
+            while (cur_node->children.size() != 0){
+                cur_node = cur_node->children.front();
+            }
+        };
+        unsigned int get_item() {
+            return cur_node->words[cur_item].value;
+        };
+        void increment() {
+            if ((cur_item < cur_node->words.size() - 1) && (cur_node->children.size() == 0)){
+                cur_item++;
+                return;
+            }
+
+            //Go one level up from bottom most node
+            if ((cur_item == cur_node->words.size() - 1) && (cur_node->children.size() == 0) && (cur_node->parent)){
+                //Go to the parent
+                do {
+                    this->find_order();
+                    cur_node = cur_node->parent;
+                } while (cur_item == cur_node->words.size() && cur_node->parent);
+                return;
+            }
+
+            //Go one level up from any node
+            if ((cur_item == cur_node->words.size()) && (cur_node->parent)){
+                //Go to the parent
+                do {
+                    this->find_order();
+                    cur_node = cur_node->parent;
+                } while (cur_item == cur_node->words.size() && cur_node->parent);
+                return;
+            }
+
+            //Get next child's firstt element
+            if (cur_item < cur_node->words.size()) {
+                cur_node = cur_node->children[cur_item + 1]; //Next node
+                while (cur_node->children.size() != 0){
+                    cur_node = cur_node->children.front();
+                }
+                cur_item = 0;
+                return;
+            }
+        };
+
 };
 
 B_tree::B_tree(unsigned short num_max_elem) {
@@ -230,4 +294,26 @@ void B_tree::produce_graph(const char * filename) {
     draw_node(reinterpret_cast<B_tree_node *>(root_node), graphfile, -1);
     graphfile << "}\n";
     graphfile.close();
+}
+
+
+bool test_btree(std::set<unsigned int> &input, B_tree * tree) {
+
+    B_tree_node * root_node = reinterpret_cast<B_tree_node *>(tree->root_node);
+    Pseudo_btree_iterator * iter = new Pseudo_btree_iterator(root_node);
+    bool passes = true;
+    int counter = 0;
+
+    for (std::set<unsigned int>::iterator it = input.begin(); it != input.end(); it++) {
+        if (*it != iter->get_item()) {
+            passes = false;
+            std::cout << "ERROR! Expected: " << *it << " Got: " << iter->get_item() << " At position: " << counter << std::endl;
+            break;
+        }
+        counter++;
+        iter->increment();
+    }
+
+    return passes;
+
 }

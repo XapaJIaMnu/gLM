@@ -24,6 +24,8 @@ int main(int argc, char* argv[]) {
     }
 
     pesho->produce_graph(filename);
+    test_btree(prev_nums, pesho);
+
     delete pesho;
     return 0;
 }
