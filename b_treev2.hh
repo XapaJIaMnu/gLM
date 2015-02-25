@@ -316,7 +316,7 @@ bool test_btree(std::set<unsigned int> &input, B_tree * tree) {
         counter++;
         iter->increment();
     }
-
+    delete iter;
     return passes;
 
 }
