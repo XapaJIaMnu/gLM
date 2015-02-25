@@ -7,14 +7,17 @@
 #include <set>
 #include <iterator>
 
+class B_tree_node; //Forward declaration
+
 class B_tree {
     public:
-        void * root_node; //it should be B_tree_node. Avoid cyclical definition
+        B_tree_node * root_node;
         B_tree(unsigned short);
         ~B_tree();
         void draw_tree();
         void insert_entry(Entry value);
         void produce_graph(const char * filename);
+        std::pair<B_tree_node *, int> find_element(Entry element);
 };
 
 class B_tree_node {
@@ -102,11 +105,11 @@ class Pseudo_btree_iterator {
 
 B_tree::B_tree(unsigned short num_max_elem) {
     B_tree_node * root = new B_tree_node(num_max_elem, this); //This should be safe, I am just need "this" for the address.
-    root_node = reinterpret_cast<void *>(root);
+    root_node = root;
 }
 
 B_tree::~B_tree() {
-    B_tree_node * actual_node = reinterpret_cast<B_tree_node *>(root_node);
+    B_tree_node * actual_node = root_node;
     delete actual_node;
 }
 
@@ -212,7 +215,7 @@ void B_tree_node::split() {
 
         this->is_root = false;
         new_root->container = this->container;
-        new_root->container->root_node = reinterpret_cast<void *>(new_root);
+        new_root->container->root_node = new_root;
         this->container = nullptr;
         this->parent = new_root;
         right_node->parent = new_root;
@@ -242,7 +245,7 @@ void B_tree_node::split() {
 }
 
 void B_tree::insert_entry(Entry value) {
-    B_tree_node * root = reinterpret_cast<B_tree_node *>(root_node);
+    B_tree_node * root = root_node;
     std::pair<B_tree_node *, int> position = root->find_position(value);
     position.first->insert(value, position.second);
     position.first->split();
@@ -267,7 +270,7 @@ void print_node(B_tree_node * node) {
 
 void B_tree::draw_tree() {
     //Draws what is currently in the tree. For debugging purposes
-    print_node(reinterpret_cast<B_tree_node *>(root_node));
+    print_node(root_node);
 }
 
 void draw_node(B_tree_node * node, std::ofstream& filehandle, int num_child) {
@@ -291,7 +294,7 @@ void B_tree::produce_graph(const char * filename) {
     std::ofstream graphfile;
     graphfile.open(filename);
     graphfile << "digraph g {\nnode [shape = record,height=.1];\n";
-    draw_node(reinterpret_cast<B_tree_node *>(root_node), graphfile, -1);
+    draw_node(root_node, graphfile, -1);
     graphfile << "}\n";
     graphfile.close();
 }
@@ -299,7 +302,7 @@ void B_tree::produce_graph(const char * filename) {
 
 bool test_btree(std::set<unsigned int> &input, B_tree * tree) {
 
-    B_tree_node * root_node = reinterpret_cast<B_tree_node *>(tree->root_node);
+    B_tree_node * root_node = tree->root_node;
     Pseudo_btree_iterator * iter = new Pseudo_btree_iterator(root_node);
     bool passes = true;
     int counter = 0;
