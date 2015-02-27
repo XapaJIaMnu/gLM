@@ -71,7 +71,7 @@ ArpaReader::ArpaReader(const char * filename) {
 processed_line ArpaReader::readline() {
     processed_line rettext;
     rettext.filefinished = false;
-    //Check if we have reached the end of file.
+    //Check if we have reached the end of file. Mostly for badly formatted arpa files
     if (arpafile.eof()) {
         rettext.filefinished = true;
         arpafile.close();
@@ -80,6 +80,14 @@ processed_line ArpaReader::readline() {
     //Read in the line and tokenize it
     std::string sLine = "";
     std::getline(arpafile, sLine);
+
+    //Check if we have reached the end marker
+    if (sLine == "\\end\\") {
+        rettext.filefinished = true;
+        arpafile.close();
+        return rettext;
+    }
+
     boost::char_separator<char> sep("\t");
     boost::tokenizer<boost::char_separator<char> > tokens(sLine, sep);
     //Discard empty lines. If we encounter one we just go to the next one
@@ -101,8 +109,10 @@ processed_line ArpaReader::readline() {
     rettext.score = stof(*it);
     it++;
     //The next (numerical value of) state tokens are ngrams
-    for (int i = 0; i<state; i++){
-        std::string current_word = *it;
+    //They are separated by space so we need a new tokenizer
+    boost::char_separator<char> sep_space(" ");
+    boost::tokenizer<boost::char_separator<char> > ngrams(*it, sep_space);
+    for (auto current_word : ngrams){
         //Check if the current word has a vocabulary ID assigned and if not
         //produce one.
         std::map<std::string, unsigned int>::iterator id_found = encode_map.find(current_word);
@@ -113,11 +123,12 @@ processed_line ArpaReader::readline() {
             //We have an unseen ngram. assign the next vocabulary id
             encode_map.insert(std::pair<std::string, unsigned int>(current_word, vocabcounter));
             decode_map.insert(std::pair<unsigned int, std::string>(vocabcounter, current_word));
-            vocabcounter++;
             rettext.ngrams.push_back(vocabcounter);
+            vocabcounter++;
         }
-        it++; //Go to the next token
     }
+
+    it++; //Go to the next token
 
     //Now we either have end of line, or a backoff weight
     if (state != max_ngrams) {
