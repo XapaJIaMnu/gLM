@@ -37,6 +37,7 @@ class B_tree_node {
         //Insertion to vector location is index to be inserted (before the old one)
         void insert(B_tree_node * new_node, int location);
         void insert(Entry new_val, int location);
+        std::pair<B_tree_node *, int> find_element(Entry element);
         std::pair<B_tree_node *, int> find_position(Entry new_value);
         void split();
 };
@@ -113,6 +114,10 @@ B_tree::~B_tree() {
     delete actual_node;
 }
 
+std::pair<B_tree_node *, int> B_tree::find_element(Entry element) {
+    return root_node->find_element(element);
+}
+
 B_tree_node::B_tree_node(unsigned short num_max_elem, B_tree_node * parent_node) {
     max_elem = num_max_elem;
     is_root = false;
@@ -142,6 +147,36 @@ void B_tree_node::insert(B_tree_node * new_node, int location){
 void B_tree_node::insert(Entry new_val, int location){
     std::vector<Entry>::iterator it = words.begin() + location;
     words.insert(it, new_val);
+}
+
+std::pair<B_tree_node *, int> B_tree_node::find_element(Entry element) {
+
+    int candidate_position = words.size(); //Assume last position
+    bool found = false;
+
+    for (int i = 0; i < words.size(); i++){
+        if (words[i] == element) {
+            candidate_position = i;
+            found = true;
+            break;
+        }
+        if (words[i] > element) {
+            //We can never have two nodes with the same value as per specification.
+            candidate_position = i;
+            break;
+        }
+    }
+
+    if (children.size() != 0 && !found){
+        return children[candidate_position]->find_element(element);
+    } else {
+        if (found){
+            return std::pair<B_tree_node *, int>(this, candidate_position);
+        } else {
+            return std::pair<B_tree_node *, int>(nullptr, -1); //Not found, nullptr
+        }
+    }
+
 }
 
 std::pair<B_tree_node *, int> B_tree_node::find_position(Entry new_value) {
