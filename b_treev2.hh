@@ -6,6 +6,7 @@
 #include "structs.h"
 #include <set>
 #include <iterator>
+#include <sstream>
 
 class B_tree_node; //Forward declaration
 
@@ -335,23 +336,24 @@ void B_tree::produce_graph(const char * filename) {
 }
 
 
-bool test_btree(std::set<unsigned int> &input, B_tree * tree) {
+std::pair<bool, std::string> test_btree(std::set<unsigned int> &input, B_tree * tree) {
 
     B_tree_node * root_node = tree->root_node;
     Pseudo_btree_iterator * iter = new Pseudo_btree_iterator(root_node);
     bool passes = true;
     int counter = 0;
+    std::stringstream error;
 
     for (std::set<unsigned int>::iterator it = input.begin(); it != input.end(); it++) {
         if (*it != iter->get_item()) {
             passes = false;
-            std::cout << "ERROR! Expected: " << *it << " Got: " << iter->get_item() << " At position: " << counter << std::endl;
+            error << "ERROR! Expected: " << *it << " Got: " << iter->get_item() << " At position: " << counter << std::endl;
             break;
         }
         counter++;
         iter->increment();
     }
     delete iter;
-    return passes;
+    return std::pair<bool, std::string>(passes, error.str());
 
 }

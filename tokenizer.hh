@@ -27,14 +27,16 @@ class ArpaReader {
         std::ifstream arpafile;
         unsigned int vocabcounter; //Assigns vocabulary ids for words, starting for zero;
         unsigned short state; //0 for configuration, 1 for unigrams, 2 for bigrams, etc
-        unsigned short max_ngrams;
         std::string next_ngrams_boundary; //The boundary condition for the next \N-grams string
 
         //Maps for converting to and from vocabulary ids to strings.
-        std::map<unsigned int, std::string> decode_map;
         std::map<std::string, unsigned int> encode_map; 
 
     public:
+        std::map<unsigned int, std::string> decode_map;
+        unsigned short max_ngrams;
+
+        //Functions
         ArpaReader(const char *);
         processed_line readline();
 
