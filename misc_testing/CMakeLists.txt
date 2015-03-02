@@ -1,0 +1,2 @@
+add_executable(btree_test btree_test.cpp)
+add_executable(tokenize_test tokenize_tests.cpp)
