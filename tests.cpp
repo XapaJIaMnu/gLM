@@ -1,7 +1,7 @@
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE Suites
 #include <boost/test/unit_test.hpp>
-#include "b_treev2.hh"
+#include "btree.hh"
 #include "tokenizer.hh"
 
 //Init b_tree and the set of numbers that it contains
