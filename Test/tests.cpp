@@ -1,5 +1,6 @@
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE Suites
+#define ARPA_TESTFILEPATH "/home/dheart/uni_stuff/phd_2/gLM/arpa/toy_lm.arpa"
 #include <boost/test/unit_test.hpp>
 #include "btree.hh"
 #include "tokenizer.hh"
@@ -120,7 +121,7 @@ BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE(Parser)
  
 BOOST_AUTO_TEST_CASE(max_ngrams_test) {
-    ArpaReader pesho("arpa/toy_lm.arpa");
+    ArpaReader pesho(ARPA_TESTFILEPATH);
     BOOST_CHECK_MESSAGE(pesho.max_ngrams == 4, "Wrong number of max ngrams. Got: " << pesho.max_ngrams << ", expected 4.");
 
     //Just iterate till the end of the file so that we don't have multiple file handles.
@@ -131,7 +132,7 @@ BOOST_AUTO_TEST_CASE(max_ngrams_test) {
 }
  
 BOOST_AUTO_TEST_CASE(random_arpa_lines_test) {
-    ArpaReader pesho("arpa/toy_lm.arpa");
+    ArpaReader pesho(ARPA_TESTFILEPATH);
 
     //Do several tests based
     for (int i = 0; i < 18; i++) {

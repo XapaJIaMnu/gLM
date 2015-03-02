@@ -4,6 +4,7 @@
 #include <fstream>
 #include <stdlib.h>
 #include <map>
+#include <cstdlib>
 
 struct processed_line {
     unsigned short ngram_size;
@@ -44,6 +45,12 @@ class ArpaReader {
 
 ArpaReader::ArpaReader(const char * filename) {
     arpafile.open(filename);
+
+    if ( arpafile.fail() ) {
+        std::cerr << "Failed to open file " << filename << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
+
     vocabcounter = 0;
     state = 0;
 

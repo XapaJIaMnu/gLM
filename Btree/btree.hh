@@ -3,7 +3,7 @@
 #include <iostream>
 #include <math.h>
 #include <fstream>
-#include "structs.h"
+#include "structs.hh"
 #include <set>
 #include <iterator>
 #include <sstream>
