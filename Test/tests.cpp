@@ -28,7 +28,26 @@ std::pair<B_tree *, std::set<unsigned int> > init_btree(int max_degree, int num_
     return std::pair<B_tree *, std::set<unsigned int> >(pesho, prev_nums);
 }
 
- 
+BOOST_AUTO_TEST_SUITE(Entry_overload)
+BOOST_AUTO_TEST_CASE(various_tests) {
+    Entry A = {10, nullptr, false};
+    Entry B = {15, nullptr, false};
+    Entry C = {10, nullptr, false};
+    Entry D = {16, nullptr, false};
+    Entry E = {17, nullptr, false};
+    Entry G = {19, nullptr, false};
+
+    BOOST_CHECK(A < B);
+    BOOST_CHECK(A == C);
+    BOOST_CHECK(E != D);
+    BOOST_CHECK(10 == A);
+    BOOST_CHECK(G != 22);
+    BOOST_CHECK(B > 5);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+
 BOOST_AUTO_TEST_SUITE(Btree)
  
 BOOST_AUTO_TEST_CASE(Insert_in_order) {
