@@ -1,9 +1,16 @@
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE Suites
 #define ARPA_TESTFILEPATH "/home/dheart/uni_stuff/phd_2/gLM/arpa/toy_lm.arpa"
+#define FLOAT_TOLERANCE 1e-5*1e-5
 #include <boost/test/unit_test.hpp>
 #include "btree.hh"
 #include "tokenizer.hh"
+
+//Float comparison
+inline bool float_compare(float a, float b) { 
+
+    return (a - b) * (a - b) < FLOAT_TOLERANCE;
+}
 
 //Init b_tree and the set of numbers that it contains
 std::pair<B_tree *, std::set<unsigned int> > init_btree(int max_degree, int num_entries) {
@@ -138,11 +145,11 @@ BOOST_AUTO_TEST_CASE(random_arpa_lines_test) {
     for (int i = 0; i < 18; i++) {
         processed_line text = pesho.readline();
         if (i == 3){
-            BOOST_CHECK_MESSAGE(text.backoff == -0.2553, "Got " << text.backoff << " expected -0.2553.");
+            BOOST_CHECK_MESSAGE(float_compare(text.backoff, -0.2553), "Got " << text.backoff << " expected -0.2553.");
         }
 
         if (i == 6){
-            BOOST_CHECK_MESSAGE(text.score == -0.6990, "Got " << text.score << " expected -0.6990.");
+            BOOST_CHECK_MESSAGE(float_compare(text.score, -0.6990), "Got " << text.score << " expected -0.6990.");
         }
 
         if (i == 13){
@@ -154,7 +161,7 @@ BOOST_AUTO_TEST_CASE(random_arpa_lines_test) {
         }
 
         if (i == 17){
-            BOOST_CHECK_MESSAGE(text.score == -0.1213, "Got " << text.score << " expected -0.1213.");
+            BOOST_CHECK_MESSAGE(float_compare(text.score, -0.1213), "Got " << text.score << " expected -0.1213.");
             //Decode word
             std::map<unsigned int, std::string>::iterator it;
             std::string word = pesho.decode_map.find(text.ngrams[3])->second;
