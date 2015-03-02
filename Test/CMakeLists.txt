@@ -4,6 +4,3 @@ add_executable(tests tests.cpp)
 target_link_libraries(tests
                       ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
                       )
-                      
-enable_testing()
-add_test(AllTest tests)
