@@ -1,6 +1,6 @@
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE Suites
-#define ARPA_TESTFILEPATH "/home/dheart/uni_stuff/phd_2/gLM/arpa/toy_lm.arpa"
+//#define ARPA_TESTFILEPATH is defined by cmake
 #define FLOAT_TOLERANCE 1e-5*1e-5
 #include <boost/test/unit_test.hpp>
 #include "btree.hh"
