@@ -4,13 +4,15 @@
 
 int main(int argc, char* argv[]) {
     int max_degree = 3;
-    const char * filename = "graph.dot";
+    const char * filename1 = "graph.dot";
+    const char * filename2 = "graph_compressed.dot";
     int num_entries = 25;
 
-    if (argc == 4) {
+    if (argc == 5) {
         max_degree = atoi(argv[1]);
         num_entries = atoi(argv[2]);
-        filename = argv[3];
+        filename1 = argv[3];
+        filename2 = argv[4];
     }
     B_tree * pesho = new B_tree(max_degree);
     std::set<unsigned int> prev_nums; //Used to see if we have duplicating nums
@@ -23,8 +25,12 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    pesho->produce_graph(filename);
+    pesho->produce_graph(filename1);
     test_btree(prev_nums, pesho);
+
+    pesho->compress();
+    pesho->produce_graph(filename2);
+    //test_btree(prev_nums, pesho);
 
     delete pesho;
     return 0;

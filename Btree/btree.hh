@@ -3,6 +3,7 @@
 #include <iostream>
 #include <math.h>
 #include <fstream>
+#include <stdlib.h>
 #include "structs.hh"
 #include <set>
 #include <iterator>
@@ -19,6 +20,7 @@ class B_tree {
         void insert_entry(Entry value);
         void produce_graph(const char * filename);
         std::pair<B_tree_node *, int> find_element(Entry element);
+        void compress();
 };
 
 class B_tree_node {
@@ -40,7 +42,11 @@ class B_tree_node {
         void insert(Entry new_val, int location);
         std::pair<B_tree_node *, int> find_element(Entry element);
         std::pair<B_tree_node *, int> find_position(Entry new_value);
+        void split_rebalance();
+        void compress();
+        void compress_tree();
         void split();
+
 };
 
 //For testing only, quite ugly. Do not use for anything else!
@@ -117,6 +123,10 @@ B_tree::~B_tree() {
 
 std::pair<B_tree_node *, int> B_tree::find_element(Entry element) {
     return root_node->find_element(element);
+}
+
+void B_tree::compress(){
+    root_node->compress_tree();
 }
 
 B_tree_node::B_tree_node(unsigned short num_max_elem, B_tree_node * parent_node) {
@@ -200,14 +210,100 @@ std::pair<B_tree_node *, int> B_tree_node::find_position(Entry new_value) {
 
 }
 
-void B_tree_node::split() {
+void B_tree_node::split_rebalance() {
     if (words.size() <= max_elem){
         //No need to split the node. It's balanced.
         return;
+    } else {
+        split();
+        if (parent) {
+            parent->split_rebalance(); //Sometimes we don't have a parent
+        }
+    }
+}
+
+void B_tree_node::compress_tree(){
+    if (this->words.size() < max_elem) {
+        this->compress();
     }
 
+    for (auto child : children) {
+        if (child->words.size() < max_elem){
+            child->compress();
+        }
+        child->compress_tree();
+    }
+}
+
+void B_tree_node::compress() {
+    //If a node doesn't have a full number of children, move some entires up
+
+    //Find which children have the most number of elements. If more than one
+    //Choose randomly between the two
+    std::vector<B_tree_node *> max_child; //A vector that will contain the children with maximum nodes
+    int max_children = 0; //Max children so far
+
+    //Get a vector of all child nodes that contain the greatest amount of children
+    for (auto child : children) {
+        if (max_children < child->words.size()) { //We have a node with more elements than anything we've seen before
+            max_children = child->words.size();
+            max_child.clear();
+            max_child.push_back(child);
+        } else if (max_children == child->words.size()) {
+            max_child.push_back(child);
+        }
+    }
+
+    if (max_child.size() == 0) {
+        return;
+    }
+    //Choose in between them
+    B_tree_node * childtosplit = max_child[(int)(rand() % max_child.size())];
+    //Don't split a single child. Yet.
+    if (childtosplit->words.size() == 1) {
+        return;
+    }
+    //Reccursively compress until either all children are sized 1, or we are saturated.
+    childtosplit->split();
+    if (this->words.size() < max_elem) {
+        this->compress();
+    }
+}
+
+void B_tree_node::split() {
     int middle_idx = words.size()/2; //Integer division here, always right
 
+/*
+    if (middle_idx == 0) {
+        //We are trying to split a node with only 1 element. Instead move it to the parent.
+        int new_location = parent->words.size();
+        for (int i = 0; i< parent->words.size(); i++) {
+            if (parent->words[i] > words[middle_idx]) {
+                new_location = i;
+                break;
+            }
+        }
+        //insert the middle_value and the right node (the left was there beforehand)
+        parent->insert(words[middle_idx], new_location);
+        //Insert the left child
+        if (children.size()>0) {
+            //parent->children[new_location] = children[0];
+            for (auto child : parent->children) {
+                if (child == this) {
+                    child = children[0];
+                }
+            }
+            parent->insert(children[1], new_location+1); //insert right child
+        }
+        for (auto item : children) {
+            item = nullptr;
+        }
+        words.clear();
+        delete(this);
+        //Safely delete this node now
+        return;
+    }
+*/
     //We if we need to split we take our current node to become the left node
     //by trimming it and we will create a new node which will be the right node
     //from the elements that we previously cut out.
@@ -273,10 +369,7 @@ void B_tree_node::split() {
         parent->insert(middle_value, new_location);
         parent->insert(right_node, new_location+1);
 
-        //Check if parent is balanced
-        parent->split();
     }
-
 
 }
 
@@ -284,7 +377,7 @@ void B_tree::insert_entry(Entry value) {
     B_tree_node * root = root_node;
     std::pair<B_tree_node *, int> position = root->find_position(value);
     position.first->insert(value, position.second);
-    position.first->split();
+    position.first->split_rebalance();
 }
 
 void print_node(B_tree_node * node) {
