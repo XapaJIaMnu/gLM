@@ -294,12 +294,14 @@ bool B_tree_node::compress(bool prev_change) {
         }
     }
 
+    //If we have no suitable candidates we don't split.
     if (max_child.size() == 0) {
         return prev_change;
     }
-    //Choose in between them
+    //Choose in between the suitable candidates
     B_tree_node * childtosplit = max_child[(int)(rand() % max_child.size())];
-    //Don't split a single child. Yet.
+    //Don't split a single child if it has children. They will populate it.
+    //@TODO. This check should be moved upwards
     if (childtosplit->words.size() == 1 && childtosplit->children.size() > 0) {
         return prev_change;
     }
