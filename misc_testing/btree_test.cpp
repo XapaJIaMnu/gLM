@@ -29,6 +29,7 @@ int main(int argc, char* argv[]) {
     test_btree(prev_nums, pesho);
 
     pesho->compress();
+    pesho->trim();
     pesho->produce_graph(filename2);
     //test_btree(prev_nums, pesho);
 

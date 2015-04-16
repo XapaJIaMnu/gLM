@@ -21,6 +21,7 @@ class B_tree {
         void produce_graph(const char * filename);
         std::pair<B_tree_node *, int> find_element(Entry element);
         void compress();
+        void trim();
 };
 
 class B_tree_node {
@@ -43,9 +44,11 @@ class B_tree_node {
         std::pair<B_tree_node *, int> find_element(Entry element);
         std::pair<B_tree_node *, int> find_position(Entry new_value);
         void split_rebalance();
-        void compress();
-        void compress_tree();
+        bool compress(bool prev_change);
+        bool compress_tree();
         void split();
+        void split_last();
+        void trim();
 
 };
 
@@ -126,7 +129,14 @@ std::pair<B_tree_node *, int> B_tree::find_element(Entry element) {
 }
 
 void B_tree::compress(){
-    root_node->compress_tree();
+    bool has_changed = true;
+    while (has_changed) {
+        has_changed = root_node->compress_tree();
+    }
+}
+
+void B_tree::trim(){
+    root_node->trim();
 }
 
 B_tree_node::B_tree_node(unsigned short num_max_elem, B_tree_node * parent_node) {
@@ -146,7 +156,9 @@ B_tree_node::B_tree_node(unsigned short num_max_elem, B_tree * container_orig) {
 B_tree_node::~B_tree_node(){
     words.clear();
     for (int i = 0; i < children.size(); i++) {
-        delete children[i];
+        if (children[i]) {
+            delete children[i]; //Prevent nullptr free. @TODO is this necessary?
+        }
     }
 }
 
@@ -222,20 +234,45 @@ void B_tree_node::split_rebalance() {
     }
 }
 
-void B_tree_node::compress_tree(){
-    if (this->words.size() < max_elem) {
-        this->compress();
+void B_tree_node::trim() {
+    //Trims the B_tree so that no empty nodes are left
+    for (int i = 0; i<children.size(); i++) {
+        if (children[i] && children[i]->words.size() == 0) {
+            //std::cout << "Child" << child << std::endl;
+            delete children[i];
+            children[i] = nullptr;
+        }
     }
 
     for (auto child : children) {
-        if (child->words.size() < max_elem){
-            child->compress();
+        if (child) {
+            child->trim();
         }
-        child->compress_tree();
     }
 }
 
-void B_tree_node::compress() {
+bool B_tree_node::compress_tree(){
+    bool has_modified = false; //Check if we need to call compress again
+
+    if (this->words.size() < max_elem) {
+        has_modified = this->compress(false);
+    }
+
+    for (auto child : children) {
+        if (!child) {
+            continue;
+        }
+        if (child->words.size() < max_elem){
+            child->compress(false);
+        }
+        bool has_changed = child->compress_tree();
+        has_modified = has_changed || has_modified;
+    }
+
+    return has_modified;
+}
+
+bool B_tree_node::compress(bool prev_change) {
     //If a node doesn't have a full number of children, move some entires up
 
     //Find which children have the most number of elements. If more than one
@@ -245,65 +282,68 @@ void B_tree_node::compress() {
 
     //Get a vector of all child nodes that contain the greatest amount of children
     for (auto child : children) {
-        if (max_children < child->words.size()) { //We have a node with more elements than anything we've seen before
+        if (!child) {
+            continue;
+        }
+        if (max_children < (child->words.size())) { //We have a node with more elements than anything we've seen before
             max_children = child->words.size();
             max_child.clear();
             max_child.push_back(child);
-        } else if (max_children == child->words.size()) {
+        } else if (max_children == child->words.size() && (child->words.size() != 0)) {
             max_child.push_back(child);
         }
     }
 
     if (max_child.size() == 0) {
-        return;
+        return prev_change;
     }
     //Choose in between them
     B_tree_node * childtosplit = max_child[(int)(rand() % max_child.size())];
     //Don't split a single child. Yet.
-    if (childtosplit->words.size() == 1) {
-        return;
+    if (childtosplit->words.size() == 1 && childtosplit->children.size() > 0) {
+        return prev_change;
     }
     //Reccursively compress until either all children are sized 1, or we are saturated.
     childtosplit->split();
+    prev_change = true;
     if (this->words.size() < max_elem) {
-        this->compress();
+        prev_change = this->compress(prev_change);
     }
+    return prev_change;
+}
+
+void B_tree_node::split_last(){
+    //Bottom most node
+    int new_location = parent->words.size();
+    for (int i = 0; i< parent->words.size(); i++) {
+        if (parent->words[i] > words[0]) {
+            new_location = i;
+            break;
+        }
+    }
+    //insert the middle_value and the right node (the left was there beforehand)
+    parent->insert(words[0], new_location);
+    //Insert dummy child on its place
+    B_tree_node * dummy_child = nullptr;
+    parent->insert(dummy_child, new_location+1);
+    //This node will be destroyed by the trim function
+    
+    words.clear();
+    children.clear(); //Destroy any dangling children.
 }
 
 void B_tree_node::split() {
     int middle_idx = words.size()/2; //Integer division here, always right
 
-/*
+
     if (middle_idx == 0) {
         //We are trying to split a node with only 1 element. Instead move it to the parent.
-        int new_location = parent->words.size();
-        for (int i = 0; i< parent->words.size(); i++) {
-            if (parent->words[i] > words[middle_idx]) {
-                new_location = i;
-                break;
-            }
+        if (this->children.size() == 0) { //Only do that if we are bottom most
+            this->split_last();
         }
-        //insert the middle_value and the right node (the left was there beforehand)
-        parent->insert(words[middle_idx], new_location);
-        //Insert the left child
-        if (children.size()>0) {
-            //parent->children[new_location] = children[0];
-            for (auto child : parent->children) {
-                if (child == this) {
-                    child = children[0];
-                }
-            }
-            parent->insert(children[1], new_location+1); //insert right child
-        }
-        for (auto item : children) {
-            item = nullptr;
-        }
-        words.clear();
-        delete(this);
-        //Safely delete this node now
         return;
     }
-*/
+
     //We if we need to split we take our current node to become the left node
     //by trimming it and we will create a new node which will be the right node
     //from the elements that we previously cut out.
@@ -331,7 +371,9 @@ void B_tree_node::split() {
     }
     
     for (std::vector<B_tree_node *>::iterator it = children.begin() + child_mid_idx; it != children.end(); it++){
-        (*it)->parent = right_node;
+        if (*it) {
+            (*it)->parent = right_node; //Skip null children
+        }
         right_node->children.push_back(*it);
     }
 
@@ -415,7 +457,9 @@ void draw_node(B_tree_node * node, std::ofstream& filehandle, int num_child) {
         filehandle << "\"node" << node->parent << "\":f" <<  num_child  << " -> \"node" << node << "\"\n";
     }
     for (int i = 0; i < node->children.size(); i++) {
-        draw_node(node->children[i], filehandle, i);
+        if (node->children[i]) {
+            draw_node(node->children[i], filehandle, i); //Due to compression we may have nullptr child.
+        }
     }
 }
 
