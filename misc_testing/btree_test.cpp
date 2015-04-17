@@ -26,11 +26,17 @@ int main(int argc, char* argv[]) {
     }
 
     pesho->produce_graph(filename1);
-    test_btree(prev_nums, pesho);
+    std::pair<bool, std::string> test_res = test_btree(prev_nums, pesho);
+    if (test_res.first) {
+        std::cout << test_res.second << std::endl;
+    }
 
     pesho->compress();
     pesho->produce_graph(filename2);
-    //test_btree(prev_nums, pesho);
+    test_res = test_btree(prev_nums, pesho);
+    if (test_res.first) {
+        std::cout << test_res.second << std::endl;
+    }
 
     delete pesho;
     return 0;

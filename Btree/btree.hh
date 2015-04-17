@@ -69,7 +69,14 @@ class Pseudo_btree_iterator {
     public:
         Pseudo_btree_iterator (B_tree_node * root) : cur_item(0), cur_node(root) {
             while (cur_node->children.size() != 0){
-                cur_node = cur_node->children.front();
+                //We are looking to get to the first child on the left, but because of
+                //Compression and trimming it might be a null child. so we take the first non null child
+                for (auto child : cur_node->children) {
+                    if (child) {
+                        cur_node = child;
+                        break;
+                    }
+                }
             }
         };
         unsigned int get_item() {
@@ -101,11 +108,28 @@ class Pseudo_btree_iterator {
                 return;
             }
 
-            //Get next child's firstt element
+            //Get next child's first element
             if (cur_item < cur_node->words.size()) {
-                cur_node = cur_node->children[cur_item + 1]; //Next node
+                //cur_node = cur_node->children[cur_item + 1]; //Next node
+                //Get next node while skipping null elements:
+
+                //This will be broken if we have a last child being null or if we reach
+                //the last child due to nulls
+                for (int i = cur_item + 1; i < cur_node->children.size();i++){
+                    if (cur_node->children[i]){
+                        cur_node = cur_node->children[i];
+                        break;
+                    }
+                }
                 while (cur_node->children.size() != 0){
-                    cur_node = cur_node->children.front();
+                    //We are looking to get to the first child on the left, but because of
+                    //Compression and trimming it might be a null child. so we take the first non null child
+                    for (auto child : cur_node->children) {
+                        if (child) {
+                            cur_node = child;
+                            break;
+                        }
+                    }
                 }
                 cur_item = 0;
                 return;
