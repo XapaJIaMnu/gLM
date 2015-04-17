@@ -132,6 +132,7 @@ void B_tree::compress(){
     bool has_changed = true;
     while (has_changed) {
         has_changed = root_node->compress_tree();
+        root_node->trim();
     }
 }
 
@@ -236,9 +237,9 @@ void B_tree_node::split_rebalance() {
 
 void B_tree_node::trim() {
     //Trims the B_tree so that no empty nodes are left
+    bool all_null = true; //Check if all children are nullpointers
     for (int i = 0; i<children.size(); i++) {
         if (children[i] && children[i]->words.size() == 0) {
-            //std::cout << "Child" << child << std::endl;
             delete children[i];
             children[i] = nullptr;
         }
@@ -247,7 +248,12 @@ void B_tree_node::trim() {
     for (auto child : children) {
         if (child) {
             child->trim();
+            all_null = false; //We accessed a child so it can't be null
         }
+    }
+
+    if (all_null){
+        children.clear(); //Clear all children if everything is null.
     }
 }
 
