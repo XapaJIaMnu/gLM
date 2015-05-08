@@ -52,12 +52,22 @@ class B_tree_node {
 
 };
 
-//For testing only, quite ugly. Do not use for anything else!
-//Behaviour is undefined if we try to increment past the number of elements contained.
+/*Iterates over a compressed and a non compressed Btree. A better implementation.
+Behaviour is undefined if requested a bigger element than the tree has.
+*/
+
 class Pseudo_btree_iterator {
     private:
-        unsigned short cur_item;
+        unsigned short current_word; //Curent word to return
+        unsigned short cur_item; //Finds what child of the parent (in a row) we are.
         B_tree_node * cur_node;
+        enum State { NODE, LEAF};
+        State state;
+        /*
+        The different states are:
+        1) NODE: We are at an internal node
+        3) LEAF: We are at a leaf node
+        */
         void find_order(){ //find which child we are.
             for (unsigned short i = 0; i < cur_node->parent->children.size(); i++) {
                 if (cur_node->parent->children[i] == cur_node){
@@ -66,76 +76,73 @@ class Pseudo_btree_iterator {
             }
         }
 
+        void up_one() { //Go up one and position at the appropriate item
+            while (cur_node->parent) {
+                this->find_order();
+                cur_node = cur_node->parent;
+                current_word = cur_item; //We went up one level so the current word would be the current item.
+                //Because len(words) = len(children) - 1
+                if (current_word >= cur_node->words.size()){
+                    //We are at the end of the node, we need to go to an upper one.
+                    continue;
+                } else {
+                    state = NODE;
+                    break;
+                }
+            }
+        }
+
+        void down_as_much_as_possible() { //Given node we go to its leaf
+            if (cur_node->children.size() != 0 && cur_node->children[cur_item]) {
+                cur_node = cur_node->children[cur_item];
+                current_word = 0;
+                while (cur_node->children.size() != 0 && cur_node->children.front()) {
+                    cur_node = cur_node->children.front();
+                }
+            }
+            if (cur_node->children.size() == 0) {
+                state = LEAF;
+            } else {
+                state = NODE; //We are at a node that contains null children
+            }
+        }
+
     public:
         Pseudo_btree_iterator (B_tree_node * root) : cur_item(0), cur_node(root) {
-            while (cur_node->children.size() != 0){
-                //We are looking to get to the first child on the left, but because of
-                //Compression and trimming it might be a null child. so we take the first non null child
-                for (auto child : cur_node->children) {
-                    if (child) {
-                        cur_node = child;
-                        break;
-                    }
-                }
-            }
+            down_as_much_as_possible(); //Go to the leftmost leaf of the tree.
         };
+
         unsigned int get_item() {
-            return cur_node->words[cur_item].value;
+            return cur_node->words[current_word].value;
         };
-        void increment() {
-            if ((cur_item < cur_node->words.size() - 1) && (cur_node->children.size() == 0)){
-                cur_item++;
-                return;
-            }
 
-            //Go one level up from bottom most node
-            if ((cur_item == cur_node->words.size() - 1) && (cur_node->children.size() == 0) && (cur_node->parent)){
-                //Go to the parent
-                do {
-                    this->find_order();
-                    cur_node = cur_node->parent;
-                } while (cur_item == cur_node->words.size() && cur_node->parent);
-                return;
-            }
-
-            //Go one level up from any node
-            if ((cur_item == cur_node->words.size()) && (cur_node->parent)){
-                //Go to the parent
-                do {
-                    this->find_order();
-                    cur_node = cur_node->parent;
-                } while (cur_item == cur_node->words.size() && cur_node->parent);
-                return;
-            }
-
-            //Get next child's first element
-            if (cur_item < cur_node->words.size()) {
-                //cur_node = cur_node->children[cur_item + 1]; //Next node
-                //Get next node while skipping null elements:
-
-                //This will be broken if we have a last child being null or if we reach
-                //the last child due to nulls
-                for (int i = cur_item + 1; i < cur_node->children.size();i++){
-                    if (cur_node->children[i]){
-                        cur_node = cur_node->children[i];
-                        break;
+        void increment(){
+            switch(state) {
+                case LEAF : {
+                    current_word++; //We are at a leaf. Just go to the next word if it's available.
+                    if (current_word < cur_node->words.size()) {
+                        return;
+                    } else {
+                        up_one();
+                        return;
                     }
+                    
                 }
-                while (cur_node->children.size() != 0){
-                    //We are looking to get to the first child on the left, but because of
-                    //Compression and trimming it might be a null child. so we take the first non null child
-                    for (auto child : cur_node->children) {
-                        if (child) {
-                            cur_node = child;
-                            break;
+                case NODE : {
+                    B_tree_node * current_node = cur_node; //Keep track of the current node
+                    cur_item++; //Go to the next prospective child
+                    down_as_much_as_possible(); //If there is no next prospective child (null child), go to next element.
+                    if (cur_node == current_node) {
+                        current_word++;
+                        if (current_word >= cur_node->words.size()) {
+                            up_one(); //In case we are at the last element of the node, go up one level.
                         }
                     }
+                    return;
                 }
-                cur_item = 0;
-                return;
             }
-        };
-
+                    
+        }
 };
 
 B_tree::B_tree(unsigned short num_max_elem) {

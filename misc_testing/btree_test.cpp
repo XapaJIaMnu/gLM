@@ -27,14 +27,14 @@ int main(int argc, char* argv[]) {
 
     pesho->produce_graph(filename1);
     std::pair<bool, std::string> test_res = test_btree(prev_nums, pesho);
-    if (test_res.first) {
+    if (!test_res.first) {
         std::cout << test_res.second << std::endl;
     }
 
     pesho->compress();
     pesho->produce_graph(filename2);
     test_res = test_btree(prev_nums, pesho);
-    if (test_res.first) {
+    if (!test_res.first) {
         std::cout << test_res.second << std::endl;
     }
 
