@@ -95,6 +95,7 @@ class Pseudo_btree_iterator {
         void down_as_much_as_possible() { //Given node we go to its leaf
             if (cur_node->children.size() != 0 && cur_node->children[cur_item]) {
                 cur_node = cur_node->children[cur_item];
+                cur_item = 0; //We are the first child. and we expect the first word
                 current_word = 0;
                 while (cur_node->children.size() != 0 && cur_node->children.front()) {
                     cur_node = cur_node->children.front();
@@ -113,6 +114,10 @@ class Pseudo_btree_iterator {
         };
 
         unsigned int get_item() {
+            /*unsigned int value = cur_node->words[current_word].value;
+            if (value == 1233 || value == 1237) {
+                std::cout << "Value: " << value << " current_word " << current_word << std::endl;
+            }*/
             return cur_node->words[current_word].value;
         };
 
