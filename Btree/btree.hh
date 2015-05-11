@@ -114,10 +114,6 @@ class Pseudo_btree_iterator {
         };
 
         unsigned int get_item() {
-            /*unsigned int value = cur_node->words[current_word].value;
-            if (value == 1233 || value == 1237) {
-                std::cout << "Value: " << value << " current_word " << current_word << std::endl;
-            }*/
             return cur_node->words[current_word].value;
         };
 
@@ -167,8 +163,8 @@ std::pair<B_tree_node *, int> B_tree::find_element(Entry element) {
 void B_tree::compress(){
     bool has_changed = true;
     while (has_changed) {
-        has_changed = root_node->compress_tree();
         root_node->trim();
+        has_changed = root_node->compress_tree();
     }
 }
 
@@ -294,10 +290,12 @@ void B_tree_node::trim() {
 }
 
 bool B_tree_node::compress_tree(){
-    bool has_modified = false; //Check if we need to call compress again
+    bool has_modified_this = false; //Check if we need to call compress again
+    bool has_modified_child = false; //Check if any of the children have modified
+    bool has_modified_grandchild = false; //Check if any of the grandchildren have modified
 
     if (this->words.size() < max_elem) {
-        has_modified = this->compress(false);
+        has_modified_this = this->compress(false);
     }
 
     for (auto child : children) {
@@ -305,13 +303,14 @@ bool B_tree_node::compress_tree(){
             continue;
         }
         if (child->words.size() < max_elem){
-            child->compress(false);
+            has_modified_child = child->compress(false);
         }
-        bool has_changed = child->compress_tree();
-        has_modified = has_changed || has_modified;
+        has_modified_grandchild = child->compress_tree();
+        //Check if any change happened at all.
+        has_modified_this = has_modified_child || has_modified_grandchild || has_modified_this;
     }
 
-    return has_modified;
+    return has_modified_this;
 }
 
 bool B_tree_node::compress(bool prev_change) {
@@ -343,8 +342,11 @@ bool B_tree_node::compress(bool prev_change) {
     //Choose in between the suitable candidates
     B_tree_node * childtosplit = max_child[(int)(rand() % max_child.size())];
     //Don't split a single child if it has children. They will populate it.
+    //Don't split a child with two words, because one will move up and the other one will 
+    //be left empty and we might lose its children if they are non empty. Only split a child
+    //with two words if they have no children.
     //@TODO. This check should be moved upwards
-    if (childtosplit->words.size() == 1 && childtosplit->children.size() > 0) {
+    if (childtosplit->words.size() < 3 && childtosplit->children.size() > 0) {
         return prev_change;
     }
     //Reccursively compress until either all children are sized 1, or we are saturated.
