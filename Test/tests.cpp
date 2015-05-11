@@ -110,6 +110,28 @@ BOOST_AUTO_TEST_CASE(very_big_btree) {
     //test
     std::pair<bool, std::string> test_result = test_btree(prev_nums, pesho);
     BOOST_CHECK_MESSAGE(test_result.first, test_result.second);
+
+    //Test compression:
+    pesho->compress();
+    std::pair<bool, std::string> test_result_compressed = test_btree(prev_nums, pesho);
+    BOOST_CHECK_MESSAGE(test_result_compressed.first, "Compressed: " << test_result_compressed.second);
+    delete pesho;
+}
+
+BOOST_AUTO_TEST_CASE(very_big_btree_small_node) {
+    //init
+    std::pair<B_tree *, std::set<unsigned int> > initialization = init_btree(5, 15000);
+    B_tree * pesho = initialization.first;
+    std::set<unsigned int> prev_nums = initialization.second;
+
+    //test
+    std::pair<bool, std::string> test_result = test_btree(prev_nums, pesho);
+    BOOST_CHECK_MESSAGE(test_result.first, test_result.second);
+
+    //Test compression:
+    pesho->compress();
+    std::pair<bool, std::string> test_result_compressed = test_btree(prev_nums, pesho);
+    BOOST_CHECK_MESSAGE(test_result_compressed.first, "Compressed: " << test_result_compressed.second);
     delete pesho;
 }
 
