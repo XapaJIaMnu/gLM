@@ -188,7 +188,7 @@ B_tree_node::B_tree_node(unsigned short num_max_elem, B_tree * container_orig) {
 
 B_tree_node::~B_tree_node(){
     words.clear();
-    for (int i = 0; i < children.size(); i++) {
+    for (size_t i = 0; i < children.size(); i++) {
         if (children[i]) {
             delete children[i]; //Prevent nullptr free. @TODO is this necessary?
         }
@@ -210,7 +210,7 @@ std::pair<B_tree_node *, int> B_tree_node::find_element(Entry element) {
     int candidate_position = words.size(); //Assume last position
     bool found = false;
 
-    for (int i = 0; i < words.size(); i++){
+    for (size_t i = 0; i < words.size(); i++){
         if (words[i] == element) {
             candidate_position = i;
             found = true;
@@ -239,7 +239,7 @@ std::pair<B_tree_node *, int> B_tree_node::find_position(Entry new_value) {
 
     int candidate_position = words.size(); //Assume last position
 
-    for (int i = 0; i < words.size(); i++){
+    for (size_t i = 0; i < words.size(); i++){
         if (words[i] > new_value) {
             //We can never have two nodes with the same value as per specification.
             candidate_position = i;
@@ -270,7 +270,7 @@ void B_tree_node::split_rebalance() {
 void B_tree_node::trim() {
     //Trims the B_tree so that no empty nodes are left
     bool all_null = true; //Check if all children are nullpointers
-    for (int i = 0; i<children.size(); i++) {
+    for (size_t i = 0; i<children.size(); i++) {
         if (children[i] && children[i]->words.size() == 0) {
             delete children[i];
             children[i] = nullptr;
@@ -319,7 +319,7 @@ bool B_tree_node::compress(bool prev_change) {
     //Find which children have the most number of elements. If more than one
     //Choose randomly between the two
     std::vector<B_tree_node *> max_child; //A vector that will contain the children with maximum nodes
-    int max_children = 0; //Max children so far
+    size_t max_children = 0; //Max children so far
 
     //Get a vector of all child nodes that contain the greatest amount of children
     for (auto child : children) {
@@ -340,7 +340,7 @@ bool B_tree_node::compress(bool prev_change) {
         return prev_change;
     }
     //Choose in between the suitable candidates
-    B_tree_node * childtosplit = max_child[(int)(rand() % max_child.size())];
+    B_tree_node * childtosplit = max_child[(size_t)(rand() % max_child.size())];
     //Don't split a single child if it has children. They will populate it.
     //Don't split a child with two words, because one will move up and the other one will 
     //be left empty and we might lose its children if they are non empty. Only split a child
@@ -361,7 +361,7 @@ bool B_tree_node::compress(bool prev_change) {
 void B_tree_node::split_last(){
     //Bottom most node
     int new_location = parent->words.size();
-    for (int i = 0; i< parent->words.size(); i++) {
+    for (size_t i = 0; i< parent->words.size(); i++) {
         if (parent->words[i] > words[0]) {
             new_location = i;
             break;
@@ -447,7 +447,7 @@ void B_tree_node::split() {
     } else {
         //Find the location of the middle_value in the parent
         int new_location = parent->words.size();
-        for (int i = 0; i< parent->words.size(); i++) {
+        for (size_t i = 0; i< parent->words.size(); i++) {
             if (parent->words[i] > middle_value) {
                 new_location = i;
                 break;
@@ -493,7 +493,7 @@ void B_tree::draw_tree() {
 void draw_node(B_tree_node * node, std::ofstream& filehandle, int num_child) {
 
     filehandle << "node" << node << "[label = \"<f0> ";
-    for (int i = 0; i<node->words.size(); i++) {
+    for (size_t i = 0; i<node->words.size(); i++) {
         filehandle << '|' << node->words[i].value << '|' << "<f" << (i + 1) << '>';
     }
     filehandle << "\"];\n";
@@ -502,7 +502,7 @@ void draw_node(B_tree_node * node, std::ofstream& filehandle, int num_child) {
         //Otherwise draw the connection
         filehandle << "\"node" << node->parent << "\":f" <<  num_child  << " -> \"node" << node << "\"\n";
     }
-    for (int i = 0; i < node->children.size(); i++) {
+    for (size_t i = 0; i < node->children.size(); i++) {
         if (node->children[i]) {
             draw_node(node->children[i], filehandle, i); //Due to compression we may have nullptr child.
         }
