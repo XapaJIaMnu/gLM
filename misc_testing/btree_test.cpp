@@ -19,7 +19,7 @@ int main(int argc, char* argv[]) {
     while (prev_nums.size() < num_entries) {
         unsigned int new_entry = rand() % (num_entries*10);
         if (prev_nums.count(new_entry) == 0){
-            Entry new_entry_actual = {new_entry, nullptr, false};
+            Entry new_entry_actual = {new_entry, nullptr, 0.0, 0.0};
             pesho->insert_entry(new_entry_actual);
             prev_nums.insert(new_entry);
         }
