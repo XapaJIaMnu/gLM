@@ -38,6 +38,10 @@ int main(int argc, char* argv[]) {
         std::cout << test_res.second << std::endl;
     }
 
+    std::vector<unsigned char> byte_arr;
+    byte_arr.reserve(pesho->getTotalTreeSize());
+    pesho->toByteArray(byte_arr);
+
     delete pesho;
     return 0;
 }

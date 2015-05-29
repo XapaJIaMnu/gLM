@@ -8,12 +8,18 @@
 #include <set>
 #include <iterator>
 #include <sstream>
+#include <queue>
 
 class B_tree_node; //Forward declaration
 
 class B_tree {
+    private:
+        void assign_depth(); //We will only assign depth after compression.
+
     public:
         B_tree_node * root_node;
+        unsigned int size;
+
         B_tree(unsigned short);
         ~B_tree();
         void draw_tree();
@@ -22,6 +28,8 @@ class B_tree {
         std::pair<B_tree_node *, int> find_element(Entry element);
         void compress();
         void trim();
+        void toByteArray(std::vector<unsigned char>& byte_arr);
+        size_t getTotalTreeSize(); //Get the total tree size. For preallocating the byte array.
 };
 
 class B_tree_node {
@@ -33,6 +41,7 @@ class B_tree_node {
         B_tree_node * parent;
         B_tree * container; //Accessible only from the root node
         bool is_root;
+        unsigned int depth; //We need this when converting to an array.
 
         //Operations
         B_tree_node(unsigned short, B_tree_node *);
@@ -49,16 +58,21 @@ class B_tree_node {
         void split();
         void split_last();
         void trim();
+        void assign_depth(unsigned int what_is_my_depth);
+
+        //For converting to byte array:
+        unsigned short getNodeSize();
+        void toByteArray(std::vector<unsigned char>& byte_arr, unsigned int children_offset);
 
 };
 
 /*Iterates over a compressed and a non compressed Btree. A better implementation.
-Behaviour is undefined if requested a bigger element than the tree has.
+Behavior is undefined if requested a bigger element than the tree has.
 */
 
 class Pseudo_btree_iterator {
     private:
-        unsigned short current_word; //Curent word to return
+        unsigned short current_word; //Current word to return
         unsigned short cur_item; //Finds what child of the parent (in a row) we are.
         B_tree_node * cur_node;
         enum State { NODE, LEAF};
@@ -147,8 +161,9 @@ class Pseudo_btree_iterator {
 };
 
 B_tree::B_tree(unsigned short num_max_elem) {
-    B_tree_node * root = new B_tree_node(num_max_elem, this); //This should be safe, I am just need "this" for the address.
+    B_tree_node * root = new B_tree_node(num_max_elem, this);
     root_node = root;
+    size = 0;
 }
 
 B_tree::~B_tree() {
@@ -166,10 +181,65 @@ void B_tree::compress(){
         root_node->trim();
         has_changed = root_node->compress_tree();
     }
+    //After compression is done, assign depth!
+    this->assign_depth();
 }
 
 void B_tree::trim(){
     root_node->trim();
+}
+
+size_t B_tree::getTotalTreeSize() {
+    size_t total_size = 0;
+    std::queue<B_tree_node *> node_queue;
+    node_queue.push(root_node);
+    while (!node_queue.empty()){
+        B_tree_node * current_node = node_queue.front();
+        total_size += current_node->getNodeSize();
+        for (auto child : current_node->children) {
+            if (child) { //Avoid null children
+                node_queue.push(child);
+            }
+        }
+        node_queue.pop();
+    }
+    return total_size;
+}
+
+void B_tree::assign_depth(){
+    root_node->assign_depth(0);
+}
+
+void B_tree::toByteArray(std::vector<unsigned char>& byte_arr){
+    unsigned int siblings_offset = root_node->getNodeSize(); //Offset because of siblings (including us)
+    unsigned int children_offset = 0; //Offset because of siblings' offspring
+    std::queue<B_tree_node *> processing_queue;
+    processing_queue.push(root_node);
+    unsigned int current_depth = 0;
+
+    while (!processing_queue.empty()) {
+        B_tree_node * current_node = processing_queue.front();
+        if (current_depth < current_node->depth) {
+            //We have reached a new level. All the children from before are now siblings.
+            //The siblings_offset is now children_offset and the children offset is 0
+            siblings_offset = children_offset;
+            children_offset = 0;
+            current_depth++;
+        }
+        siblings_offset -= current_node->getNodeSize(); //We have progressed with one node, remove its offset from the calculation.
+
+        //Convert the node to byte array
+        current_node->toByteArray(byte_arr, siblings_offset + children_offset);
+
+        //Add the children and their offsets to the queue.
+        for (auto child : current_node->children){
+            if (child) { //Avoid null children
+                processing_queue.push(child);
+                children_offset += child->getNodeSize();
+            }
+        }
+        processing_queue.pop();
+    }
 }
 
 B_tree_node::B_tree_node(unsigned short num_max_elem, B_tree_node * parent_node) {
@@ -193,6 +263,77 @@ B_tree_node::~B_tree_node(){
             delete children[i]; //Prevent nullptr free. @TODO is this necessary?
         }
     }
+}
+
+void B_tree_node::assign_depth(unsigned int what_is_my_depth){
+    this->depth = what_is_my_depth;
+    for (auto child : children) {
+        if (child) {
+            child->assign_depth(what_is_my_depth + 1);
+        }
+    }
+}
+
+unsigned short B_tree_node::getNodeSize(){
+    /*Size is:
+    getEntrySize()*len(words) + sizeof(bool)(bool is_last_level) + len(children)*sizeof(unsigned short) (Size of each child)
+    +  sizeof(unsigned int) (offset to the first child)
+    unless we are at a bottom most node len(children) = len(words) + 1*/
+    unsigned short entry_size = getEntrySize();
+    return entry_size*words.size() + sizeof(bool) + sizeof(unsigned short)*children.size() + sizeof(unsigned int);
+}
+
+void B_tree_node::toByteArray(std::vector<unsigned char>& byte_arr, unsigned int children_offset){
+    /*Appends to the byte_array the contents of this node in the following order:
+    (bool isLast)(words-in-byte-array)(first-child-offset (unsigned int))((children)-offsets (unsigned short))
+    the children_offsets parameter will tell us how many elements there are going to be between us and our first child.
+    If we don't have children, we just contain the bool and the words array*/
+
+    bool last;
+    //Set last
+    if (children.size() == 0) {
+        last = true;
+    } else {
+        last = false;
+    }
+    //Copy the bool
+    byte_arr.push_back(static_cast<unsigned char>(last)); //reinterpret_cast doesn't work here...
+
+    //Copy the words
+    for (auto entry : words) {
+        EntryToByteArray(byte_arr, entry);
+    }
+
+    if (!last) {
+    //We only need to do this if we actually have children.
+        //The offset of the first child needs to be stored now. It is  just the children_offset that we have.
+        unsigned char uint_arr[sizeof(children_offset)];
+        memcpy(uint_arr, (unsigned char *)&children_offset, sizeof(children_offset));
+        //Push onto the byte array
+        for (size_t i = 0; i < sizeof(children_offset); i++){
+            byte_arr.push_back(uint_arr[i]);
+        }
+
+        //Get the size of each child
+        unsigned short childrensize[children.size()];
+        for (size_t i = 0; i < children.size(); i++) {
+            if (children[i]){
+                childrensize[i] = children[i]->getNodeSize();
+            } else {
+                childrensize[i] = 0; //If we have a null child its size is 0
+            }
+        }
+        //Convert it to byte array
+        unsigned short bytearr_size = children.size()*(sizeof(unsigned short))/(sizeof(unsigned char));
+        unsigned char childsizes_arr[bytearr_size]; //Size of the byte array
+        memcpy(childsizes_arr, (unsigned char *)&childsizes_arr, bytearr_size);
+
+        //Push it onto the byte array
+        for (unsigned short i = 0; i < bytearr_size; i++){
+            byte_arr.push_back(childsizes_arr[i]);
+        }
+    }
+
 }
 
 void B_tree_node::insert(B_tree_node * new_node, int location){
@@ -466,6 +607,7 @@ void B_tree::insert_entry(Entry value) {
     std::pair<B_tree_node *, int> position = root->find_position(value);
     position.first->insert(value, position.second);
     position.first->split_rebalance();
+    size++;
 }
 
 void print_node(B_tree_node * node) {

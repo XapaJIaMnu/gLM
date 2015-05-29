@@ -107,6 +107,9 @@ BOOST_AUTO_TEST_CASE(very_big_btree) {
     B_tree * pesho = initialization.first;
     std::set<unsigned int> prev_nums = initialization.second;
 
+    //Check size:
+    BOOST_CHECK_MESSAGE((pesho->size == 65000), "Wrong size! Got: " << pesho->size << " Expected: 65000.");
+
     //test
     std::pair<bool, std::string> test_result = test_btree(prev_nums, pesho);
     BOOST_CHECK_MESSAGE(test_result.first, test_result.second);
