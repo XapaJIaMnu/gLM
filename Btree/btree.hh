@@ -9,6 +9,7 @@
 #include <iterator>
 #include <sstream>
 #include <queue>
+#include <assert.h>
 
 class B_tree_node; //Forward declaration
 
@@ -160,6 +161,17 @@ class Pseudo_btree_iterator {
         }
 };
 
+struct B_tree_node_rec {
+//This struct will be used to reconstruct things from the byte array;
+//For testing purposes, needs manual deallocation
+    bool last;
+    unsigned short num_entries;
+    unsigned int end_offset; //What is the end offset of this node.
+    Entry * entries;
+    unsigned int first_child_offset;
+    unsigned short * children_sizes;
+};
+
 B_tree::B_tree(unsigned short num_max_elem) {
     B_tree_node * root = new B_tree_node(num_max_elem, this);
     root_node = root;
@@ -221,12 +233,11 @@ void B_tree::toByteArray(std::vector<unsigned char>& byte_arr){
         B_tree_node * current_node = processing_queue.front();
         if (current_depth < current_node->depth) {
             //We have reached a new level. All the children from before are now siblings.
-            //The siblings_offset is now children_offset and the children offset is 0
-            siblings_offset = children_offset;
+            //The siblings_offset is now added to the children_offset and the children offset is 0
+            siblings_offset += children_offset;
             children_offset = 0;
             current_depth++;
         }
-        siblings_offset -= current_node->getNodeSize(); //We have progressed with one node, remove its offset from the calculation.
 
         //Convert the node to byte array
         current_node->toByteArray(byte_arr, siblings_offset + children_offset);
@@ -280,7 +291,12 @@ unsigned short B_tree_node::getNodeSize(){
     +  sizeof(unsigned int) (offset to the first child)
     unless we are at a bottom most node len(children) = len(words) + 1*/
     unsigned short entry_size = getEntrySize();
-    return entry_size*words.size() + sizeof(bool) + sizeof(unsigned short)*children.size() + sizeof(unsigned int);
+    if (children.size() != 0) {
+        return entry_size*words.size() + sizeof(bool) + sizeof(unsigned short)*children.size() + sizeof(unsigned int);
+    } else {
+        return entry_size*words.size() + sizeof(bool);
+    }
+    
 }
 
 void B_tree_node::toByteArray(std::vector<unsigned char>& byte_arr, unsigned int children_offset){
@@ -297,7 +313,7 @@ void B_tree_node::toByteArray(std::vector<unsigned char>& byte_arr, unsigned int
         last = false;
     }
     //Copy the bool
-    byte_arr.push_back(static_cast<unsigned char>(last)); //reinterpret_cast doesn't work here...
+    byte_arr.push_back(static_cast<unsigned char>(last));
 
     //Copy the words
     for (auto entry : words) {
@@ -326,7 +342,7 @@ void B_tree_node::toByteArray(std::vector<unsigned char>& byte_arr, unsigned int
         //Convert it to byte array
         unsigned short bytearr_size = children.size()*(sizeof(unsigned short))/(sizeof(unsigned char));
         unsigned char childsizes_arr[bytearr_size]; //Size of the byte array
-        memcpy(childsizes_arr, (unsigned char *)&childsizes_arr, bytearr_size);
+        memcpy(childsizes_arr, (unsigned char *)&childrensize, bytearr_size);
 
         //Push it onto the byte array
         for (unsigned short i = 0; i < bytearr_size; i++){
@@ -455,7 +471,7 @@ bool B_tree_node::compress_tree(){
 }
 
 bool B_tree_node::compress(bool prev_change) {
-    //If a node doesn't have a full number of children, move some entires up
+    //If a node doesn't have a full number of children, move some entries up
 
     //Find which children have the most number of elements. If more than one
     //Choose randomly between the two
@@ -658,6 +674,133 @@ void B_tree::produce_graph(const char * filename) {
     draw_node(root_node, graphfile, -1);
     graphfile << "}\n";
     graphfile.close();
+}
+
+void B_tree_node_reconstruct(B_tree_node_rec& target, std::vector<unsigned char>& byte_arr, unsigned int start, unsigned short size){
+    //Populates the given B_tree_node_reconstruct knowing the byte_arr, the start index and the size of the first item.
+    bool last = (bool)byte_arr[start];
+    target.last = last;
+    unsigned short entry_size = getEntrySize();
+
+    if (!last) {
+        //Calculate the indexes knowing the structure of the byte array:
+        //(bool isLast)(words-in-byte-array)(first-child-offset (unsigned int))((children)-offsets (unsigned short))
+        unsigned short remaining_elements = size - 1;
+        /*Equation is num_entries = size - bool - first_child_offset - last_entry_size + x*(unsigned short (for the remaining entries)
+        + sizeof(word))*/
+        unsigned short num_entries = (remaining_elements - sizeof(unsigned int) - sizeof(unsigned short));
+        assert((num_entries % (entry_size + sizeof(unsigned short))) == 0); //Sanity check, checks if we have supplied correct parameters
+        num_entries = num_entries/(entry_size + sizeof(unsigned short));
+
+        Entry * entries_vec = new Entry[num_entries];
+        unsigned short * children_sizes = new unsigned short[num_entries+1];
+
+        //Construct the entries vector
+        for (unsigned short i = 0; i < num_entries; i++){
+            std::vector<unsigned char>::const_iterator start_iter = byte_arr.begin() + start + 1 + i*entry_size;
+            std::vector<unsigned char>::const_iterator end_iter = byte_arr.begin() + start + 1 + (i+1)*entry_size;
+            std::vector<unsigned char>sub_byte_arr(start_iter, end_iter);
+            entries_vec[i] = byteArrayToEntry(sub_byte_arr.data());
+        }
+        target.entries = entries_vec;
+        target.num_entries = num_entries;
+
+        //Get the first child offset (in absolute terms, from the start of the array);
+        unsigned char tmp_arr[sizeof(unsigned int)];
+        for (size_t i = 0; i < sizeof(unsigned int); i++) {
+            tmp_arr[i] = byte_arr[start + 1 + num_entries*entry_size + i];
+        }
+        memcpy((unsigned char *)&target.first_child_offset, tmp_arr, sizeof(unsigned int));
+
+        //Get the sizes of each child
+        unsigned char tmp_arr2[sizeof(unsigned short)];
+        unsigned int first_child_size_position = start + 1 + num_entries*entry_size + sizeof(unsigned int);
+        for (unsigned short i = 0; i < num_entries+1; i++){
+            tmp_arr2[0] = byte_arr[first_child_size_position + i*2];
+            tmp_arr2[1] = byte_arr[first_child_size_position + i*2 + 1];
+            memcpy((unsigned char *)&children_sizes[i], tmp_arr2, sizeof(unsigned short));
+        }
+
+        target.children_sizes = children_sizes;
+    } else {
+        //We only have entries
+        unsigned short num_entries = (size - 1)/getEntrySize();
+        assert(((size - 1)%getEntrySize()) == 0); //Sanity check, checks if we have supplied correct parameters
+
+        Entry * entries_vec = new Entry[num_entries];
+        for (unsigned short i = 0; i < num_entries; i++){
+            std::vector<unsigned char>::const_iterator start_iter = byte_arr.begin() + start + 1 + i*entry_size;
+            std::vector<unsigned char>::const_iterator end_iter = byte_arr.begin() + start + 1 + (i+1)*entry_size;
+            std::vector<unsigned char>sub_byte_arr(start_iter, end_iter);
+            entries_vec[i] = byteArrayToEntry(sub_byte_arr.data());
+        }
+        target.entries = entries_vec;
+        target.num_entries = num_entries;
+
+    }
+}
+
+std::pair<bool, Entry> search_byte_arr(std::vector<unsigned char>& byte_arr, Entry key, unsigned short first_size) {
+    //For testing purposes. Tries to find a key in the byte array. This will basically test if
+    //our byte array has been stored properly. Uses simple linear search cause I can't be bothered
+    bool found = false;
+    Entry found_entry;
+    B_tree_node_rec temp_node;
+    temp_node.last = false;
+    unsigned int start = 0;
+    unsigned short size = first_size;
+    while (!found && !temp_node.last) {
+        B_tree_node_reconstruct(temp_node, byte_arr, start, size);
+
+        for (unsigned short i = 0; i < temp_node.num_entries; i++){
+            if (temp_node.entries[i].value == key.value) {
+                found = true;
+                found_entry = temp_node.entries[i];
+                break;
+            } else if (temp_node.entries[i].value > key.value){
+                //Calculate the next start end indexes 
+                start = temp_node.first_child_offset;
+                for (unsigned short j = 0; j < i; j++){
+                    start+= temp_node.children_sizes[j];
+                }
+                size = temp_node.children_sizes[i];
+                break;
+            } else if ((temp_node.entries[i].value < key.value) && (i == temp_node.num_entries - 1)) {
+                //If we have reached the last entry but the key is still bigger, go to the right node
+                start = temp_node.first_child_offset;
+                for (unsigned short j = 0; j < i; j++) {
+                    start+= temp_node.children_sizes[j];
+                }
+                start+= temp_node.children_sizes[i];
+                size = temp_node.children_sizes[i+1];
+                break;    
+            }
+        }
+        //Don't leak memory
+        delete[] temp_node.entries;
+        if (!temp_node.last) {
+            delete[] temp_node.children_sizes; //We'd get a double free otherwise
+        }
+    }
+    return std::pair<bool, Entry>(found, found_entry);
+
+}
+
+std::pair<bool, std::string> test_btree_array(std::set<unsigned int>& input, std::vector<unsigned char>& byte_arr, unsigned short first_size) {
+    bool passes = true;
+    int counter = 0;
+    std::stringstream error;
+
+    for (std::set<unsigned int>::iterator it = input.begin(); it != input.end(); it++) {
+        Entry key = {*it, nullptr, 0.0, 0.0};
+        std::pair<bool, Entry> res = search_byte_arr(byte_arr, key, first_size);
+        if (!res.first) {
+            passes = false;
+            error << "ERROR! " << *it << " Not found at position: " << counter << std::endl;
+        }
+        counter++;
+    }
+    return std::pair<bool, std::string>(passes, error.str());
 }
 
 
