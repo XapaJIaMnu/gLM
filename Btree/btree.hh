@@ -224,7 +224,15 @@ void B_tree::assign_depth(){
 
 void B_tree::toByteArray(std::vector<unsigned char>& byte_arr){
     unsigned int siblings_offset = root_node->getNodeSize(); //Offset because of siblings (including us)
-    unsigned int children_offset = 0; //Offset because of siblings' offspring
+    unsigned int children_offset = sizeof(unsigned short); //Offset because of siblings' offspring and because of 
+                                                          // the size of the first node which we will prepend to the byte array
+    unsigned short root_size = root_node->getNodeSize();
+    unsigned char root_size_bytes[sizeof(root_size)];
+    memcpy(root_size_bytes, (unsigned char *)&root_size, sizeof(root_size));
+    for (unsigned short i = 0; i < sizeof(root_size); i++){
+        byte_arr.push_back(root_size_bytes[i]);
+    }
+
     std::queue<B_tree_node *> processing_queue;
     processing_queue.push(root_node);
     unsigned int current_depth = 0;
@@ -740,15 +748,21 @@ void B_tree_node_reconstruct(B_tree_node_rec& target, std::vector<unsigned char>
     }
 }
 
-std::pair<bool, Entry> search_byte_arr(std::vector<unsigned char>& byte_arr, Entry key, unsigned short first_size) {
+std::pair<bool, Entry> search_byte_arr(std::vector<unsigned char>& byte_arr, Entry key) {
     //For testing purposes. Tries to find a key in the byte array. This will basically test if
     //our byte array has been stored properly. Uses simple linear search cause I can't be bothered
+
+    //First, find the size of the root node:
+    unsigned short root_size;
+    memcpy((unsigned char *)&root_size, byte_arr.data(), sizeof(root_size));
+
+
     bool found = false;
     Entry found_entry;
     B_tree_node_rec temp_node;
     temp_node.last = false;
-    unsigned int start = 0;
-    unsigned short size = first_size;
+    unsigned int start = sizeof(root_size);
+    unsigned short size = root_size;
     while (!found && !temp_node.last) {
         B_tree_node_reconstruct(temp_node, byte_arr, start, size);
 
@@ -786,14 +800,14 @@ std::pair<bool, Entry> search_byte_arr(std::vector<unsigned char>& byte_arr, Ent
 
 }
 
-std::pair<bool, std::string> test_btree_array(std::set<unsigned int>& input, std::vector<unsigned char>& byte_arr, unsigned short first_size) {
+std::pair<bool, std::string> test_btree_array(std::set<unsigned int>& input, std::vector<unsigned char>& byte_arr) {
     bool passes = true;
     int counter = 0;
     std::stringstream error;
 
     for (std::set<unsigned int>::iterator it = input.begin(); it != input.end(); it++) {
         Entry key = {*it, nullptr, 0.0, 0.0};
-        std::pair<bool, Entry> res = search_byte_arr(byte_arr, key, first_size);
+        std::pair<bool, Entry> res = search_byte_arr(byte_arr, key);
         if (!res.first) {
             passes = false;
             error << "ERROR! " << *it << " Not found at position: " << counter << std::endl;

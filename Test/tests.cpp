@@ -123,8 +123,7 @@ BOOST_AUTO_TEST_CASE(very_big_btree) {
     std::vector<unsigned char> byte_arr;
     byte_arr.reserve(pesho->getTotalTreeSize());
     pesho->toByteArray(byte_arr);
-    unsigned short root_size = pesho->root_node->getNodeSize();
-    std::pair<bool, std::string> test_result_byte = test_btree_array(prev_nums, byte_arr, root_size);
+    std::pair<bool, std::string> test_result_byte = test_btree_array(prev_nums, byte_arr);
     BOOST_CHECK_MESSAGE(test_result_byte.first, "Byte array: " << test_result_byte.second);
 
     delete pesho;
@@ -149,10 +148,9 @@ BOOST_AUTO_TEST_CASE(very_big_btree_small_node) {
     std::vector<unsigned char> byte_arr;
     byte_arr.reserve(pesho->getTotalTreeSize());
     pesho->toByteArray(byte_arr);
-    unsigned short root_size = pesho->root_node->getNodeSize();
-    std::pair<bool, std::string> test_result_byte = test_btree_array(prev_nums, byte_arr, root_size);
+    std::pair<bool, std::string> test_result_byte = test_btree_array(prev_nums, byte_arr);
     BOOST_CHECK_MESSAGE(test_result_byte.first, "Byte array: " << test_result_byte.second);
-    
+
     delete pesho;
 }
 
