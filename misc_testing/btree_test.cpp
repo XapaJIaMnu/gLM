@@ -6,7 +6,7 @@ int main(int argc, char* argv[]) {
     int max_degree = 3;
     const char * filename1 = "graph.dot";
     const char * filename2 = "graph_compressed.dot";
-    int num_entries = 25;
+    unsigned int num_entries = 25;
 
     if (argc == 5) {
         max_degree = atoi(argv[1]);

@@ -202,7 +202,7 @@ void B_tree::trim(){
 }
 
 size_t B_tree::getTotalTreeSize() {
-    size_t total_size = 0;
+    size_t total_size = 2; //Size of the first node in the beginning of the tree, 2 bytes
     std::queue<B_tree_node *> node_queue;
     node_queue.push(root_node);
     while (!node_queue.empty()){

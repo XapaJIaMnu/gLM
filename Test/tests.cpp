@@ -13,7 +13,7 @@ inline bool float_compare(float a, float b) {
 }
 
 //Init b_tree and the set of numbers that it contains
-std::pair<B_tree *, std::set<unsigned int> > init_btree(int max_degree, int num_entries) {
+std::pair<B_tree *, std::set<unsigned int> > init_btree(int max_degree, unsigned int num_entries) {
 
     B_tree * pesho = new B_tree(max_degree);
     std::set<unsigned int> prev_nums; //Used to see if we have duplicating nums
@@ -121,10 +121,12 @@ BOOST_AUTO_TEST_CASE(very_big_btree) {
 
     //Test conversion to byte array
     std::vector<unsigned char> byte_arr;
-    byte_arr.reserve(pesho->getTotalTreeSize());
+    size_t total_array_size = pesho->getTotalTreeSize();
+    byte_arr.reserve(total_array_size);
     pesho->toByteArray(byte_arr);
     std::pair<bool, std::string> test_result_byte = test_btree_array(prev_nums, byte_arr);
     BOOST_CHECK_MESSAGE(test_result_byte.first, "Byte array: " << test_result_byte.second);
+    BOOST_CHECK_MESSAGE(total_array_size == byte_arr.size(), "Total size mismatch! Expected " << total_array_size << " actual " << byte_arr.size());
 
     delete pesho;
 }
@@ -146,10 +148,12 @@ BOOST_AUTO_TEST_CASE(very_big_btree_small_node) {
 
     //Test conversion to byte array
     std::vector<unsigned char> byte_arr;
-    byte_arr.reserve(pesho->getTotalTreeSize());
+    size_t total_array_size = pesho->getTotalTreeSize();
+    byte_arr.reserve(total_array_size);
     pesho->toByteArray(byte_arr);
     std::pair<bool, std::string> test_result_byte = test_btree_array(prev_nums, byte_arr);
     BOOST_CHECK_MESSAGE(test_result_byte.first, "Byte array: " << test_result_byte.second);
+    BOOST_CHECK_MESSAGE(total_array_size == byte_arr.size(), "Total size mismatch! Expected " << total_array_size << " actual " << byte_arr.size());
 
     delete pesho;
 }
