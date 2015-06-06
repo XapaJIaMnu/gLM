@@ -1,15 +1,15 @@
 cmake_minimum_required (VERSION 3.0)
 project (gLM)
 
-#Work with clang for now later add a switch to gcc
-SET (CMAKE_CXX_COMPILER             "/usr/bin/clang++")
-SET (CMAKE_CXX_FLAGS                "-g -Wall -std=c++11")
-SET (CMAKE_CXX_FLAGS_DEBUG          "-g")
-SET (CMAKE_AR      "/usr/bin/llvm-ar")
-SET (CMAKE_LINKER  "/usr/bin/llvm-ld")
-SET (CMAKE_NM      "/usr/bin/llvm-nm")
-SET (CMAKE_OBJDUMP "/usr/bin/llvm-objdump")
-SET (CMAKE_RANLIB  "/usr/bin/llvm-ranlib")
+#Debug build by default!
+if (DEFINED ${BUILDTYPE})
+    SET (CMAKE_CXX_FLAGS                "-O3 -Wall -std=c++11 -DNDEBUG")
+    message("Building a release build with -O3.")
+else()
+    SET (CMAKE_CXX_FLAGS                "-g -Wall -std=c++11")
+    SET (CMAKE_CXX_FLAGS_DEBUG          "-g")
+    message("Building a debug build.")
+endif()
 
 #Add include directories
 include_directories ("${PROJECT_SOURCE_DIR}/Btree")
