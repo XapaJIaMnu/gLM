@@ -29,6 +29,7 @@ class ArpaReader {
         unsigned int vocabcounter; //Assigns vocabulary ids for words, starting for zero;
         unsigned short state; //0 for configuration, 1 for unigrams, 2 for bigrams, etc
         std::string next_ngrams_boundary; //The boundary condition for the next \N-grams string
+        unsigned int unk_id; //The ID of the <unk> token
 
         //Maps for converting to and from vocabulary ids to strings.
         std::map<std::string, unsigned int> encode_map; 
@@ -80,6 +81,7 @@ ArpaReader::ArpaReader(const char * filename) {
 processed_line ArpaReader::readline() {
     processed_line rettext;
     rettext.filefinished = false;
+    bool unk = false; //Are we at the <unk> token
     //Check if we have reached the end of file. Mostly for badly formatted arpa files
     if (arpafile.eof()) {
         rettext.filefinished = true;
@@ -132,6 +134,10 @@ processed_line ArpaReader::readline() {
             //We have an unseen ngram. assign the next vocabulary id
             encode_map.insert(std::pair<std::string, unsigned int>(current_word, vocabcounter));
             decode_map.insert(std::pair<unsigned int, std::string>(vocabcounter, current_word));
+            if (current_word == "<unk>") {
+                unk = true;
+                unk_id = vocabcounter;
+            }
             rettext.ngrams.push_back(vocabcounter);
             vocabcounter++;
         }
@@ -139,8 +145,8 @@ processed_line ArpaReader::readline() {
 
     it++; //Go to the next token
 
-    //Now we either have end of line, or a backoff weight
-    if (state != max_ngrams) {
+    //Now we either have end of line, or a backoff weight. Special case for <unk>
+    if (state != max_ngrams && !unk) {
         rettext.backoff = stof(*it);
     }
     //After assigning backoff weight, return the object
