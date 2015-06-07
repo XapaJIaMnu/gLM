@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <map>
 #include <cstdlib>
+#include <algorithm>
 
 struct processed_line {
     unsigned short ngram_size;
@@ -142,6 +143,8 @@ processed_line ArpaReader::readline() {
             vocabcounter++;
         }
     }
+
+    std::reverse(rettext.ngrams.begin(), rettext.ngrams.end());
 
     it++; //Go to the next token
 

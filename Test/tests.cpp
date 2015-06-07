@@ -220,7 +220,7 @@ BOOST_AUTO_TEST_CASE(random_arpa_lines_test) {
             //Decode word
             std::map<unsigned int, std::string>::iterator it;
             std::string word = pesho.decode_map.find(text.ngrams[1])->second;
-            BOOST_CHECK_MESSAGE(word == "wood", "Got " << word << " expected 2.");
+            BOOST_CHECK_MESSAGE(word == "jean", "Got " << word << " expected jean.");
         }
 
         if (i == 17){
@@ -228,7 +228,7 @@ BOOST_AUTO_TEST_CASE(random_arpa_lines_test) {
             //Decode word
             std::map<unsigned int, std::string>::iterator it;
             std::string word = pesho.decode_map.find(text.ngrams[3])->second;
-            BOOST_CHECK_MESSAGE(word == "jean", "Got " << word << " expected 2.");
+            BOOST_CHECK_MESSAGE(word == "wood", "Got " << word << " expected wood.");
         }
 
     }
