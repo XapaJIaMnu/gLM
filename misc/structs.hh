@@ -1,9 +1,11 @@
 #include <vector>
 #include <string.h>
 
+class B_tree; //Forward declaration
+
 struct Entry {
     unsigned int value;
-    Entry * next_level;
+    B_tree * next_level;
     float prob;
     float backoff;
 };
@@ -62,7 +64,7 @@ bool operator!= (const Entry &left, const unsigned int &right) {
 unsigned char getEntrySize() {
     /*This function returns the size of all individual components of the struct.
     It is necessary for bit packing, because we don't want to store padding*/
-    return sizeof(unsigned int) + sizeof(Entry *) + 2*sizeof(float);
+    return sizeof(unsigned int) + sizeof(B_tree *) + 2*sizeof(float);
 }
 
 void EntryToByteArray(std::vector<unsigned char> &byte_array, Entry& entry){
@@ -90,7 +92,7 @@ void EntryToByteArray(std::vector<unsigned char> &byte_array, Entry& entry){
 Entry byteArrayToEntry(unsigned char * input_arr) {
     //MAKE SURE YOU FREE THE ARRAY!
     unsigned int value;
-    Entry * next_level;
+    B_tree * next_level;
     float prob;
     float backoff;
 

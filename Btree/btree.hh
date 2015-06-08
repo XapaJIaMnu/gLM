@@ -26,7 +26,10 @@ class B_tree {
         void draw_tree();
         void insert_entry(Entry value);
         void produce_graph(const char * filename);
-        std::pair<B_tree_node *, int> find_element(Entry element);
+
+        template<class EntryOrVocabID>  //Work with both full entries or just the vocabID
+        std::pair<B_tree_node *, int> find_element(EntryOrVocabID element);
+
         void compress();
         void trim();
         void toByteArray(std::vector<unsigned char>& byte_arr);
@@ -51,7 +54,10 @@ class B_tree_node {
         //Insertion to vector location is index to be inserted (before the old one)
         void insert(B_tree_node * new_node, int location);
         void insert(Entry new_val, int location);
-        std::pair<B_tree_node *, int> find_element(Entry element);
+
+        template<class EntryOrVocabID> //Work with both full entries or just the vocabID
+        std::pair<B_tree_node *, int> find_element(EntryOrVocabID element);
+
         std::pair<B_tree_node *, int> find_position(Entry new_value);
         void split_rebalance();
         bool compress(bool prev_change);
@@ -183,7 +189,8 @@ B_tree::~B_tree() {
     delete actual_node;
 }
 
-std::pair<B_tree_node *, int> B_tree::find_element(Entry element) {
+template<class EntryOrVocabID>
+std::pair<B_tree_node *, int> B_tree::find_element(EntryOrVocabID element) {
     return root_node->find_element(element);
 }
 
@@ -370,7 +377,8 @@ void B_tree_node::insert(Entry new_val, int location){
     words.insert(it, new_val);
 }
 
-std::pair<B_tree_node *, int> B_tree_node::find_element(Entry element) {
+template<class EntryOrVocabID>
+std::pair<B_tree_node *, int> B_tree_node::find_element(EntryOrVocabID element) {
 
     int candidate_position = words.size(); //Assume last position
     bool found = false;

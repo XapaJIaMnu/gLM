@@ -13,6 +13,7 @@ endif()
 
 #Add include directories
 include_directories ("${PROJECT_SOURCE_DIR}/Btree")
+include_directories ("${PROJECT_SOURCE_DIR}/Trie")
 include_directories ("${PROJECT_SOURCE_DIR}/Parser")
 include_directories ("${PROJECT_SOURCE_DIR}/misc")
 
