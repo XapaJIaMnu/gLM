@@ -143,6 +143,10 @@ class Pseudo_btree_iterator {
             return cur_node->words[current_word].value;
         };
 
+        Entry& get_entry() {
+            return cur_node->words[current_word];
+        }
+
         void increment(){
             current_index++;
             if (current_index > container->size) {
