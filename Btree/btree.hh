@@ -74,7 +74,8 @@ class B_tree_node {
 };
 
 /*Iterates over a compressed and a non compressed Btree. A better implementation.
-Behavior is undefined if requested a bigger element than the tree has.
+Returns last entry of the Btree and sets this.finished to true if we try to increment it
+past the size of the Btree.
 */
 
 class Pseudo_btree_iterator {
