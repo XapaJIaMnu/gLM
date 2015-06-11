@@ -19,7 +19,7 @@ class B_tree {
 
     public:
         B_tree_node * root_node;
-        unsigned int size;
+        unsigned int size;  //Number of entries in the BTree
 
         B_tree(unsigned short);
         ~B_tree();
@@ -82,6 +82,7 @@ class Pseudo_btree_iterator {
         unsigned short current_word; //Current word to return
         unsigned short cur_item; //Finds what child of the parent (in a row) we are.
         B_tree_node * cur_node;
+        B_tree * container;
         enum State { NODE, LEAF};
         State state;
         /*
@@ -130,7 +131,10 @@ class Pseudo_btree_iterator {
         }
 
     public:
-        Pseudo_btree_iterator (B_tree_node * root) : cur_item(0), cur_node(root) {
+        unsigned int current_index = 1;
+        bool finished = false; //Keep track if we have finished traversing the trie
+
+        Pseudo_btree_iterator (B_tree_node * root) : cur_item(0), cur_node(root), container(root->container) {
             down_as_much_as_possible(); //Go to the leftmost leaf of the tree.
         };
 
@@ -139,6 +143,11 @@ class Pseudo_btree_iterator {
         };
 
         void increment(){
+            current_index++;
+            if (current_index > container->size) {
+                finished = true;
+                return; //We have finished iterating through the btree
+            }
             switch(state) {
                 case LEAF : {
                     current_word++; //We are at a leaf. Just go to the next word if it's available.
@@ -842,6 +851,12 @@ std::pair<bool, std::string> test_btree(std::set<unsigned int> &input, B_tree * 
         }
         counter++;
         iter->increment();
+    }
+    //Test if the iterator recognizes that it has finished the btree
+    iter->increment();
+    if (!iter->finished) {
+        passes = false;
+        error << "Iterator has not reported to have finished yet!" << std::endl;
     }
     delete iter;
     return std::pair<bool, std::string>(passes, error.str());
