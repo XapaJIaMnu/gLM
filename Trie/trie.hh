@@ -51,6 +51,7 @@ size_t calculateTrieSize(B_tree * root_trie) {
             if (entry.next_level) {
                 btrees_to_explore.push(entry.next_level);
             }
+            iter->increment();
         } while (!iter->finished);
         delete iter;
     }

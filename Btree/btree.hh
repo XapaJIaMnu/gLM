@@ -135,15 +135,15 @@ class Pseudo_btree_iterator {
         unsigned int current_index = 1;
         bool finished = false; //Keep track if we have finished traversing the trie
 
-        Pseudo_btree_iterator (B_tree_node * root) : cur_item(0), cur_node(root), container(root->container) {
+        Pseudo_btree_iterator (B_tree_node * root) : current_word(0), cur_item(0), cur_node(root), container(root->container) {
             down_as_much_as_possible(); //Go to the leftmost leaf of the tree.
-        };
+        }
 
         unsigned int get_item() {
             return cur_node->words[current_word].value;
-        };
+        }
 
-        Entry& get_entry() {
+        Entry get_entry() {
             return cur_node->words[current_word];
         }
 
