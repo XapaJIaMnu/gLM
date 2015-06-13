@@ -47,15 +47,70 @@ size_t calculateTrieSize(B_tree * root_trie) {
         //Now add future elements to the queue by traversing the btree
         Pseudo_btree_iterator * iter = new Pseudo_btree_iterator(current->root_node);
         do {
-            Entry entry = iter->get_entry();
-            if (entry.next_level) {
-                btrees_to_explore.push(entry.next_level);
+            Entry * entry = iter->get_entry();
+            if (entry->next_level && entry->next_level->size > 0) { //The second check shouldn't be necessary, except for unk! Investigate!
+                btrees_to_explore.push(entry->next_level);
             }
             iter->increment();
         } while (!iter->finished);
         delete iter;
     }
     return ret;
+}
+
+//Compresses all of the btree os the tries
+void compressTrie(B_tree * root_trie) {
+    std::queue<B_tree *> btrees_to_explore;
+    btrees_to_explore.push(root_trie);
+
+    while(!btrees_to_explore.empty()) {
+        B_tree * current = btrees_to_explore.front();
+        btrees_to_explore.pop(); //We have processed the element, pop it.
+
+        //Now add future elements to the queue by traversing the btree
+        Pseudo_btree_iterator * iter = new Pseudo_btree_iterator(current->root_node);
+        do {
+            Entry * entry = iter->get_entry();
+            if (entry->next_level) { //The second check shouldn't be necessary, except for unk! Investigate!
+                if (entry->next_level->size == 0) {
+                    //Purge empty btrees. Not sure how we get them that's happening though...
+                    delete entry->next_level;
+                    entry->next_level = nullptr;
+                } else {
+                    btrees_to_explore.push(entry->next_level);
+                }
+            }
+            iter->increment();
+        } while (!iter->finished);
+        delete iter;
+        current->compress();
+    }
+}
+
+//Clears the Trie from memory.
+void deleteTrie(B_tree * root_trie) {
+    std::queue<B_tree *> btrees_to_explore;
+    btrees_to_explore.push(root_trie);
+
+    while(!btrees_to_explore.empty()) {
+        B_tree * current = btrees_to_explore.front();
+        btrees_to_explore.pop(); //We have processed the element, pop it.
+
+        //Now add future elements to the queue by traversing the btree
+        Pseudo_btree_iterator * iter = new Pseudo_btree_iterator(current->root_node);
+        do {
+            if (current->size == 0) {
+                break; //Btrees with size of 0 don't span other btrees
+            }
+            Entry * entry = iter->get_entry();
+            if (entry->next_level) { //The second check shouldn't be necessary, except for unk! Investigate!
+                btrees_to_explore.push(entry->next_level);
+            }
+            iter->increment();
+        } while (!iter->finished);
+        delete iter;
+        delete current;
+    }
 }
 
 std::pair<Entry, unsigned short> findNgram(B_tree * root_trie, std::vector<unsigned int> ngrams) {

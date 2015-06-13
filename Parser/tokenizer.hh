@@ -151,6 +151,8 @@ processed_line ArpaReader::readline() {
     //Now we either have end of line, or a backoff weight. Special case for <unk>
     if (state != max_ngrams && !unk) {
         rettext.backoff = stof(*it);
+    } else {
+        rettext.backoff = 0; //Explicitly set backoff ot 0 at the end to avoid relying on unitialized values.
     }
     //After assigning backoff weight, return the object
     return rettext;
