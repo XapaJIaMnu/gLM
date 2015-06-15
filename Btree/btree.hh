@@ -865,5 +865,4 @@ std::pair<bool, std::string> test_btree(std::set<unsigned int> &input, B_tree * 
     }
     delete iter;
     return std::pair<bool, std::string>(passes, error.str());
-
 }
