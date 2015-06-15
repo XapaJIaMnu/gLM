@@ -3,8 +3,7 @@
 //#define ARPA_TESTFILEPATH is defined by cmake
 #define FLOAT_TOLERANCE 1e-5*1e-5
 #include <boost/test/unit_test.hpp>
-#include "btree.hh"
-#include "tokenizer.hh"
+#include "trie.hh"  //Includes tokenizer.hh and btree.hh
 
 //Float comparison
 inline bool float_compare(float a, float b) { 
@@ -188,11 +187,11 @@ BOOST_AUTO_TEST_CASE(modify_entry_test) {
  
 BOOST_AUTO_TEST_SUITE_END()
  
-BOOST_AUTO_TEST_SUITE(Parser)
+BOOST_AUTO_TEST_SUITE(Parser_and_trie)
  
 BOOST_AUTO_TEST_CASE(max_ngrams_test) {
     ArpaReader pesho(ARPA_TESTFILEPATH);
-    BOOST_CHECK_MESSAGE(pesho.max_ngrams == 4, "Wrong number of max ngrams. Got: " << pesho.max_ngrams << ", expected 4.");
+    BOOST_CHECK_MESSAGE(pesho.max_ngrams == 5, "Wrong number of max ngrams. Got: " << pesho.max_ngrams << ", expected 5.");
 
     //Just iterate till the end of the file so that we don't have multiple file handles.
     processed_line text = pesho.readline();
@@ -204,35 +203,48 @@ BOOST_AUTO_TEST_CASE(max_ngrams_test) {
 BOOST_AUTO_TEST_CASE(random_arpa_lines_test) {
     ArpaReader pesho(ARPA_TESTFILEPATH);
 
-    //Do several tests based
-    for (int i = 0; i < 18; i++) {
+    //Do several tests based on reading in the file
+    for (int i = 0; i < 22404; i++) {
         processed_line text = pesho.readline();
-        if (i == 3){
-            BOOST_CHECK_MESSAGE(float_compare(text.backoff, -0.2553), "Got " << text.backoff << " expected -0.2553.");
+        if (i == 4){
+            BOOST_CHECK_MESSAGE(float_compare(text.backoff, -0.3436003), "Got " << text.backoff << " expected -0.3436003. Line number: " << i);
         }
 
-        if (i == 6){
-            BOOST_CHECK_MESSAGE(float_compare(text.score, -0.6990), "Got " << text.score << " expected -0.6990.");
-        }
-
-        if (i == 13){
-            BOOST_CHECK_MESSAGE(text.ngram_size == 2, "Got " << text.ngram_size << " expected 2.");
+        if (i == 12640){
+            BOOST_CHECK_MESSAGE(float_compare(text.score, -1.0943657), "Got " << text.score << " expected -1.0943657. Line number: " << i);
             //Decode word
             std::map<unsigned int, std::string>::iterator it;
-            std::string word = pesho.decode_map.find(text.ngrams[1])->second;
-            BOOST_CHECK_MESSAGE(word == "jean", "Got " << word << " expected jean.");
+            std::string word = pesho.decode_map.find(text.ngrams[0])->second;
+            BOOST_CHECK_MESSAGE(word == "having", "Got " << word << " expected having. Line number: " << i);
         }
 
-        if (i == 17){
-            BOOST_CHECK_MESSAGE(float_compare(text.score, -0.1213), "Got " << text.score << " expected -0.1213.");
+        if (i == 15374){
+            BOOST_CHECK_MESSAGE(float_compare(text.score, -0.83306277), "Got " << text.score << " expected -0.83306277. Line number: " << i);
             //Decode word
             std::map<unsigned int, std::string>::iterator it;
             std::string word = pesho.decode_map.find(text.ngrams[3])->second;
-            BOOST_CHECK_MESSAGE(word == "wood", "Got " << word << " expected wood.");
+            BOOST_CHECK_MESSAGE(word == "safety", "Got " << word << " expected safety. Line number: " << i);
+        }
+
+        if (i == 22404){
+            BOOST_CHECK_MESSAGE(text.ngram_size == 5, "Got " << text.ngram_size << " expected 5. Line number: " << i);
+            //Decode word
+            std::map<unsigned int, std::string>::iterator it;
+            std::string word = pesho.decode_map.find(text.ngrams[1])->second;
+            BOOST_CHECK_MESSAGE(word == "millennium", "Got " << word << " expected millennium. Line number: " << i);
         }
 
     }
 }
+
+BOOST_AUTO_TEST_CASE(trie_test) {
+    std::pair<bool, std::string> res = test_trie(ARPA_TESTFILEPATH, 256);
+    BOOST_CHECK_MESSAGE(res.first, res.second);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE(Byte_array)
 
 BOOST_AUTO_TEST_CASE(entry_byte_array_conversion_test) {
     Entry entry = {23, nullptr, 0.5, 0.75};

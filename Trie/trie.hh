@@ -136,3 +136,49 @@ std::pair<Entry, unsigned short> findNgram(B_tree * root_trie, std::vector<unsig
 
     return std::pair<Entry, unsigned short>(ret, level);
 }
+
+std::pair<bool, std::string> test_trie(const char * infile, unsigned short btree_node_size) {
+    //Constructs a trie from an infile and then checks if it can find every token.
+    ArpaReader pesho(infile);
+    processed_line text = pesho.readline();
+    B_tree * root_btree = new B_tree(btree_node_size);
+
+    while (!text.filefinished){
+        addToTrie(root_btree, text, pesho.max_ngrams, btree_node_size);
+        text = pesho.readline();
+    }
+
+    //Btree constructed. Compress it:
+    compressTrie(root_btree);
+
+    ArpaReader pesho2(infile);
+    processed_line text2 = pesho2.readline();
+    bool correct = true;
+    std::stringstream error;
+
+    while (!text2.filefinished && correct) {
+        std::pair<Entry, unsigned short> found = findNgram(root_btree, text2.ngrams);
+
+        if (found.second) {
+            correct = found.first.prob == text2.score;
+            correct = correct && (found.first.backoff == text2.backoff);
+        } else {
+            error << "Ngram not found! " << text2 << std::endl;
+            break;
+        }
+        if (!correct) {
+            error << text2 << std::endl;
+            error << "Ngram size is: " << text2.ngram_size << std::endl;
+            error << "There has been an error! Score: Expected " << text2.score
+            << " Got: " << found.first.prob << " Backoff expected: " << text2.backoff << " Got: " << found.first.backoff << std::endl;
+            break;
+        }
+        text2 = pesho2.readline();
+    }
+
+    //Free all the used memory
+    deleteTrie(root_btree);
+
+    //Now search for every single entry.
+    return std::pair<bool, std::string>(correct, error.str());
+}
