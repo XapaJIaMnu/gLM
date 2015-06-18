@@ -262,26 +262,16 @@ BOOST_AUTO_TEST_CASE(entry_byte_array_conversion_test) {
 BOOST_AUTO_TEST_CASE(entry_byte_array_conversion_test_index) {
     bool pointer2Index = true;
     B_tree * boguspoiter = (B_tree *)123;
-    Entry entry = {23, boguspoiter, 0.5, 0.75};
+    Entry entry = {23, boguspoiter, 0.5, 0.75, 123};
     std::vector<unsigned char> byte_arr;
     EntryToByteArray(byte_arr, entry, pointer2Index);
 
     Entry new_entry = byteArrayToEntry(byte_arr.data(), pointer2Index);
     BOOST_CHECK_MESSAGE(entry.value == new_entry.value, "Got " << new_entry.value << " expected " << entry.value << ".");
-    BOOST_CHECK_MESSAGE((size_t)new_entry.next_level == (size_t)boguspoiter, "Got " << (size_t)new_entry.next_level << " expected " << (size_t)boguspoiter << ".");
+    BOOST_CHECK_MESSAGE(new_entry.next_level == nullptr, "Got " << new_entry.next_level << " expected " << (size_t)nullptr << ".");
     BOOST_CHECK_MESSAGE(entry.prob == new_entry.prob, "Got " << new_entry.prob << " expected " << entry.prob << ".");
     BOOST_CHECK_MESSAGE(entry.backoff == new_entry.backoff, "Got " << new_entry.backoff << " expected " << entry.backoff << ".");
-
-    //Check if we correctly throw exception when given too big of a pointer
-    B_tree * boguspoiter2 = ((B_tree *)std::numeric_limits<unsigned int>::max()) + 1;
-    Entry entry2 = {23, boguspoiter2, 0.5, 0.75};
-    std::vector<unsigned char> byte_arr2;
-    try {
-        EntryToByteArray(byte_arr2, entry2, pointer2Index);
-        BOOST_CHECK_MESSAGE(false, "We didn't produce exception even though our number is too big!");
-    } catch (offsetTooBig& e) {
-        //We successfully generated and caught the exception, nothing more to do here;
-    }
+    BOOST_CHECK_MESSAGE(entry.offset == new_entry.offset, "Got " << new_entry.offset << " expected " << entry.offset << ".");
     
 }
 

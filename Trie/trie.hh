@@ -1,5 +1,21 @@
 #include "btree.hh"
 #include "tokenizer.hh"
+#include <limits>
+#include <exception>
+
+class offsetTooBig: public std::exception
+{
+  virtual const char* what() const throw()
+  {
+    return "The offset is too big to fit in unsigned int. The trie needs to be sharded.";
+  }
+} offsetEx;
+
+void throwIfOverfow(unsigned int offset, unsigned int next_level_size) noexcept(false) {
+    if ((std::numeric_limits<unsigned int>::max() - offset) < next_level_size) {
+        throw offsetEx;
+    }
+}
 
 void addToTrie(B_tree * root_trie, processed_line ngram, unsigned int max_order, unsigned int max_node_size) {
     B_tree * next_level = root_trie;
@@ -137,10 +153,11 @@ std::pair<Entry, unsigned short> findNgram(B_tree * root_trie, std::vector<unsig
     return std::pair<Entry, unsigned short>(ret, level);
 }
 
-void trieToByteArray(std::vector<unsigned char>& byte_arr, B_tree * root_trie){
+//Convert the whole Trie to a byte array. Throws if offset becomes too big.
+void trieToByteArray(std::vector<unsigned char>& byte_arr, B_tree * root_trie) noexcept(false) {
     bool pointer2Index = true; //We are converting the B_tree * to offset index.
-    size_t offset = root_trie->getTotalTreeSize(pointer2Index); //Offset from the start of the the array to the desired element
-                                                   //It is size_t to silence compiler warning, but maximum value should be the one permited by unsigned int
+    unsigned int offset = root_trie->getTotalTreeSize(pointer2Index); //Offset from the start of the the array to the desired element
+
     std::queue<B_tree *> btrees_to_explore;
     btrees_to_explore.push(root_trie);
 
@@ -151,12 +168,19 @@ void trieToByteArray(std::vector<unsigned char>& byte_arr, B_tree * root_trie){
         Pseudo_btree_iterator * iter = new Pseudo_btree_iterator(current_level->root_node);
         do {
             Entry * entry = iter->get_entry();
-            if (entry->next_level) { //The second check shouldn't be necessary, except for unk! Investigate!
-                entry->next_level = (B_tree *)offset; //This is no longer a pointer but an offset from beginning of array.
+            if (entry->next_level) {
+                entry->offset = offset;  //Set the offset here
+
+                //Throw if overflow
+                unsigned int next_level_size = entry->next_level->getTotalTreeSize(pointer2Index);
+                throwIfOverfow(offset, next_level_size);
+
+                //We didn't throw, proceed as usual.
                 offset+= entry->next_level->getTotalTreeSize(pointer2Index);
                 btrees_to_explore.push(entry->next_level);
             } else {
                 entry->next_level = 0; //When we don't have a child it's offset is 0
+                entry->offset = 0;
             }
             iter->increment();
         } while (!iter->finished);

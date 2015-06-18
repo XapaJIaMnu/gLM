@@ -13,7 +13,15 @@ int main(int argc, char* argv[]) {
     //Compress the trie
     compressTrie(root_btree);
 
-    std::cout << "Potential serialized size is: " << calculateTrieSize(root_btree)/(1024*1024) << std::endl;
+    size_t trie_size = calculateTrieSize(root_btree);
+    std::cout << "Potential serialized size is: " << trie_size/(1024*1024) << " MB."<< std::endl;
+    //Convert it to array
+    std::vector<unsigned char>byte_arr;
+    std::cout << "Reserved size is: " << trie_size << " bytes." << std::endl;
+    byte_arr.reserve(trie_size);
+    trieToByteArray(byte_arr, root_btree);
+    std::cout << "Size of byte_arr: " << byte_arr.size() << std::endl;
+
     deleteTrie(root_btree);
 
     std::pair<bool, std::string> test = test_trie(argv[1], atoi(argv[2]));
