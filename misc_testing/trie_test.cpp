@@ -12,6 +12,8 @@ int main(int argc, char* argv[]) {
     std::cout << "Finished constructing the trie!" << std::endl;
     //Compress the trie
     compressTrie(root_btree);
+
+    std::cout << "Potential serialized size is: " << calculateTrieSize(root_btree)/(1024*1024) << std::endl;
     deleteTrie(root_btree);
 
     std::pair<bool, std::string> test = test_trie(argv[1], atoi(argv[2]));

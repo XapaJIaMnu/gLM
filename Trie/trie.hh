@@ -48,7 +48,7 @@ size_t calculateTrieSize(B_tree * root_trie) {
         Pseudo_btree_iterator * iter = new Pseudo_btree_iterator(current->root_node);
         do {
             Entry * entry = iter->get_entry();
-            if (entry->next_level && entry->next_level->size > 0) { //The second check shouldn't be necessary, except for unk! Investigate!
+            if (entry->next_level) {
                 btrees_to_explore.push(entry->next_level);
             }
             iter->increment();
@@ -73,7 +73,7 @@ void compressTrie(B_tree * root_trie) {
             Entry * entry = iter->get_entry();
             if (entry->next_level) { //The second check shouldn't be necessary, except for unk! Investigate!
                 if (entry->next_level->size == 0) {
-                    //Purge empty btrees. Not sure how we get them that's happening though...
+                    //Purge empty btrees. Not sure how we get them that's happening though... Maybe because of UNK?
                     delete entry->next_level;
                     entry->next_level = nullptr;
                 } else {
@@ -137,6 +137,38 @@ std::pair<Entry, unsigned short> findNgram(B_tree * root_trie, std::vector<unsig
     return std::pair<Entry, unsigned short>(ret, level);
 }
 
+void trieToByteArray(std::vector<unsigned char>& byte_arr, B_tree * root_trie){
+    bool pointer2Index = true; //We are converting the B_tree * to offset index.
+    size_t offset = root_trie->getTotalTreeSize(pointer2Index); //Offset from the start of the the array to the desired element
+                                                   //It is size_t to silence compiler warning, but maximum value should be the one permited by unsigned int
+    std::queue<B_tree *> btrees_to_explore;
+    btrees_to_explore.push(root_trie);
+
+    while (!btrees_to_explore.empty()) {
+        B_tree * current_level = btrees_to_explore.front();
+
+        //Now add future elements to the queue by traversing the btree
+        Pseudo_btree_iterator * iter = new Pseudo_btree_iterator(current_level->root_node);
+        do {
+            Entry * entry = iter->get_entry();
+            if (entry->next_level) { //The second check shouldn't be necessary, except for unk! Investigate!
+                entry->next_level = (B_tree *)offset; //This is no longer a pointer but an offset from beginning of array.
+                offset+= entry->next_level->getTotalTreeSize(pointer2Index);
+                btrees_to_explore.push(entry->next_level);
+            } else {
+                entry->next_level = 0; //When we don't have a child it's offset is 0
+            }
+            iter->increment();
+        } while (!iter->finished);
+        delete iter;
+
+        //Convert the trie level to byte array
+        current_level->toByteArray(byte_arr, pointer2Index);
+
+        btrees_to_explore.pop();
+    }
+}
+
 std::pair<bool, std::string> test_trie(const char * infile, unsigned short btree_node_size) {
     //Constructs a trie from an infile and then checks if it can find every token.
     ArpaReader pesho(infile);
@@ -148,7 +180,7 @@ std::pair<bool, std::string> test_trie(const char * infile, unsigned short btree
         text = pesho.readline();
     }
 
-    //Btree constructed. Compress it:
+    //Btree constructed. Compress it. This is necessary to get rid of empty btrees.
     compressTrie(root_btree);
 
     ArpaReader pesho2(infile);
