@@ -5,8 +5,8 @@
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/serialization/vector.hpp>
-
-void SerializeByteArray(std::vector<unsigned char>& byte_arr, const char * path){
+template<class StringType>
+void SerializeByteArray(std::vector<unsigned char>& byte_arr, const StringType path){
     std::ofstream os (path, std::ios::binary);
     boost::archive::text_oarchive oarch(os);
     oarch << byte_arr;
@@ -14,7 +14,8 @@ void SerializeByteArray(std::vector<unsigned char>& byte_arr, const char * path)
 }
 
 //The byte_arr vector should be reserved to prevent constant realocation.
-void ReadByteArray(std::vector<unsigned char>& byte_arr, const char * path){
+template<class StringType>
+void ReadByteArray(std::vector<unsigned char>& byte_arr, const StringType path){
     std::ifstream is (path, std::ios::binary);
     boost::archive::text_iarchive iarch(is);
     iarch >> byte_arr;

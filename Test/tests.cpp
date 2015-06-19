@@ -4,7 +4,9 @@
 #define FLOAT_TOLERANCE 1e-5*1e-5
 #include <boost/test/unit_test.hpp>
 #include "trie.hh"  //Includes tokenizer.hh and btree.hh
-#include "serialization.hh"
+#include "serialization.hh" //For testing properly serialization
+#include <ctime>
+#include <stdio.h>
 
 //Float comparison
 inline bool float_compare(float a, float b) { 
@@ -281,12 +283,18 @@ BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE(Serialization)
 
 BOOST_AUTO_TEST_CASE(serialization_test) {
+    std::string filepath = "/tmp/";
+    const long double sysTime = time(0);
+    std::stringstream s;
+    s << filepath << sysTime;
+
     std::vector<unsigned char> output = {1,2,3,4};
-    SerializeByteArray(output, "/tmp/testserialization");
+    SerializeByteArray(output, s.str());
 
     std::vector<unsigned char> input;
-    ReadByteArray(input, "/tmp/testserialization");
+    ReadByteArray(input, s.str());
     BOOST_CHECK_MESSAGE(input == output, "Error, input and output vectors differ.");
+    remove(s.str().c_str());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
