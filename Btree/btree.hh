@@ -346,7 +346,7 @@ void B_tree_node::toByteArray(std::vector<unsigned char>& byte_arr, unsigned int
 
     //Copy the words
     for (auto entry : words) {
-        EntryToByteArray(byte_arr, entry, pointer2Index = false);
+        EntryToByteArray(byte_arr, entry, pointer2Index);
     }
 
     if (!last) {
@@ -778,7 +778,7 @@ std::pair<bool, Entry> search_byte_arr(std::vector<unsigned char>& byte_arr, Ent
 
     //First, find the size of the root node:
     unsigned short root_size;
-    memcpy((unsigned char *)&root_size, byte_arr.data(), sizeof(root_size));
+    memcpy((unsigned char *)&root_size, byte_arr.data() + this_btree_start, sizeof(root_size));
 
 
     bool found = false;
@@ -787,9 +787,7 @@ std::pair<bool, Entry> search_byte_arr(std::vector<unsigned char>& byte_arr, Ent
     temp_node.last = false;
     unsigned int start = sizeof(root_size);
     unsigned short size = root_size;
-    std::cout << "Size is: "<< size << " Root size is: " << root_size << " Start is: " << start << std::endl;
     while (!found && !temp_node.last) {
-        std::cout << "Once " << pointer2Index << std::endl;
         B_tree_node_reconstruct(temp_node, byte_arr, start + this_btree_start, size, pointer2Index);
 
         for (unsigned short i = 0; i < temp_node.num_entries; i++){

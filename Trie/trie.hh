@@ -57,7 +57,7 @@ size_t calculateTrieSize(B_tree * root_trie) {
 
     while(!btrees_to_explore.empty()) {
         B_tree * current = btrees_to_explore.front();
-        ret += current->getTotalTreeSize();
+        ret += current->getTotalTreeSize(true /*calculate indexes instead of pointers*/);
         btrees_to_explore.pop(); //We have processed the element, pop it.
 
         //Now add future elements to the queue by traversing the btree
@@ -203,7 +203,7 @@ std::pair<Entry, unsigned short> search_byte_array_trie(std::vector<unsigned cha
         if (result.first) {
             ret = result.second;
             next_btree_start_idx = result.second.offset;
-            std::cout << "Next start is: " << next_btree_start_idx << std::endl;
+            level++;
         } else {
             break; //We didn't find the vocabIDs that we were looking, return the longest found previous match
         }
@@ -213,7 +213,7 @@ std::pair<Entry, unsigned short> search_byte_array_trie(std::vector<unsigned cha
     return res;
 }
 
-std::pair<bool, std::string> test_byte_array_trie(const char * infile, unsigned short btree_node_size) {
+B_tree * createTrie(const char * infile, unsigned short btree_node_size) {
     //Constructs a trie from an infile and then checks if it can find every token.
     ArpaReader pesho(infile);
     processed_line text = pesho.readline();
@@ -226,6 +226,12 @@ std::pair<bool, std::string> test_byte_array_trie(const char * infile, unsigned 
 
     //Btree constructed. Compress it. This is necessary to get rid of empty btrees.
     compressTrie(root_btree);
+
+    return root_btree;  //Burden of free is on the calling function.
+}
+
+std::pair<bool, std::string> test_byte_array_trie(const char * infile, unsigned short btree_node_size) {
+    B_tree * root_btree = createTrie(infile, btree_node_size);
 
     //Create a byte array from it;
     size_t trie_size = calculateTrieSize(root_btree);
@@ -242,6 +248,12 @@ std::pair<bool, std::string> test_byte_array_trie(const char * infile, unsigned 
     bool correct = true;
     std::stringstream error;
 
+    //Check if byte array size is according to the predicted size:
+    if (byte_arr.size() != trie_size) {
+        error << "Wrong predicted size! Expected " << trie_size << " Actual: " << byte_arr.size() << std::endl;
+        correct = false;
+    }
+
     //Now search for every single entry.
     while (!text2.filefinished && correct) {
         std::pair<Entry, unsigned short> found = search_byte_array_trie(byte_arr, text2.ngrams);
@@ -251,6 +263,7 @@ std::pair<bool, std::string> test_byte_array_trie(const char * infile, unsigned 
             correct = correct && (found.first.backoff == text2.backoff);
         } else {
             error << "Ngram not found! " << text2 << std::endl;
+            correct = false;
             break;
         }
         if (!correct) {
@@ -268,17 +281,7 @@ std::pair<bool, std::string> test_byte_array_trie(const char * infile, unsigned 
 
 std::pair<bool, std::string> test_trie(const char * infile, unsigned short btree_node_size) {
     //Constructs a trie from an infile and then checks if it can find every token.
-    ArpaReader pesho(infile);
-    processed_line text = pesho.readline();
-    B_tree * root_btree = new B_tree(btree_node_size);
-
-    while (!text.filefinished){
-        addToTrie(root_btree, text, pesho.max_ngrams, btree_node_size);
-        text = pesho.readline();
-    }
-
-    //Btree constructed. Compress it. This is necessary to get rid of empty btrees.
-    compressTrie(root_btree);
+    B_tree * root_btree = createTrie(infile, btree_node_size);
 
     ArpaReader pesho2(infile);
     processed_line text2 = pesho2.readline();
@@ -294,6 +297,7 @@ std::pair<bool, std::string> test_trie(const char * infile, unsigned short btree
             correct = correct && (found.first.backoff == text2.backoff);
         } else {
             error << "Ngram not found! " << text2 << std::endl;
+            correct = false;
             break;
         }
         if (!correct) {
