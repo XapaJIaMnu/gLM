@@ -1,6 +1,7 @@
 #include <vector>
 #include <string.h>
 #include <iostream>
+#pragma once
 
 class B_tree; //Forward declaration
 

@@ -50,7 +50,7 @@ template<class StringType>
 ArpaReader::ArpaReader(const StringType filename) {
     arpafile.open(filename);
 
-    if ( arpafile.fail() ) {
+    if (arpafile.fail()) {
         std::cerr << "Failed to open file " << filename << std::endl;
         std::exit(EXIT_FAILURE);
     }
