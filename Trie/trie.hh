@@ -213,7 +213,8 @@ std::pair<Entry, unsigned short> search_byte_array_trie(std::vector<unsigned cha
     return res;
 }
 
-B_tree * createTrie(const char * infile, unsigned short btree_node_size) {
+template<class StringType>
+B_tree * createTrie(const StringType infile, unsigned short btree_node_size) {
     //Constructs a trie from an infile and then checks if it can find every token.
     ArpaReader pesho(infile);
     processed_line text = pesho.readline();
@@ -230,7 +231,8 @@ B_tree * createTrie(const char * infile, unsigned short btree_node_size) {
     return root_btree;  //Burden of free is on the calling function.
 }
 
-std::pair<bool, std::string> test_byte_array_trie(const char * infile, unsigned short btree_node_size) {
+template<class StringType>
+std::pair<bool, std::string> test_byte_array_trie(const StringType infile, unsigned short btree_node_size) {
     B_tree * root_btree = createTrie(infile, btree_node_size);
 
     //Create a byte array from it;
@@ -279,7 +281,8 @@ std::pair<bool, std::string> test_byte_array_trie(const char * infile, unsigned 
     return std::pair<bool, std::string>(correct, error.str());
 }
 
-std::pair<bool, std::string> test_trie(const char * infile, unsigned short btree_node_size) {
+template<class StringType>
+std::pair<bool, std::string> test_trie(const StringType infile, unsigned short btree_node_size) {
     //Constructs a trie from an infile and then checks if it can find every token.
     B_tree * root_btree = createTrie(infile, btree_node_size);
 

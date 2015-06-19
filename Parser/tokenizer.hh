@@ -40,12 +40,14 @@ class ArpaReader {
         unsigned short max_ngrams;
 
         //Functions
-        ArpaReader(const char *);
+        template<class StringType>
+        ArpaReader(const StringType);
         processed_line readline();
 
 };
 
-ArpaReader::ArpaReader(const char * filename) {
+template<class StringType>
+ArpaReader::ArpaReader(const StringType filename) {
     arpafile.open(filename);
 
     if ( arpafile.fail() ) {
