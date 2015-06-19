@@ -4,6 +4,7 @@
 #define FLOAT_TOLERANCE 1e-5*1e-5
 #include <boost/test/unit_test.hpp>
 #include "trie.hh"  //Includes tokenizer.hh and btree.hh
+#include "serialization.hh"
 
 //Float comparison
 inline bool float_compare(float a, float b) { 
@@ -275,5 +276,17 @@ BOOST_AUTO_TEST_CASE(entry_byte_array_conversion_test_index) {
     
 }
 
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE(Serialization)
+
+BOOST_AUTO_TEST_CASE(serialization_test) {
+    std::vector<unsigned char> output = {1,2,3,4};
+    SerializeByteArray(output, "/tmp/testserialization");
+
+    std::vector<unsigned char> input;
+    ReadByteArray(input, "/tmp/testserialization");
+    BOOST_CHECK_MESSAGE(input == output, "Error, input and output vectors differ.");
+}
 
 BOOST_AUTO_TEST_SUITE_END()

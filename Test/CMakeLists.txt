@@ -1,4 +1,4 @@
-find_package(Boost COMPONENTS unit_test_framework REQUIRED)
+find_package(Boost COMPONENTS unit_test_framework serialization REQUIRED)
 
 #Get the filepath of the test file and define it.
 get_filename_component(arpaFilePath "../arpa/toy_lm.arpa" REALPATH [CACHE])
@@ -7,4 +7,5 @@ add_executable(tests tests.cpp)
 
 target_link_libraries(tests
                       ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
-                      )
+                      ${Boost_SERIALIZATION_LIBRARY}
+		     )
