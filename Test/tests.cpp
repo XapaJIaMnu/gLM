@@ -280,6 +280,16 @@ BOOST_AUTO_TEST_CASE(entry_byte_array_conversion_test_index) {
 
 BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_AUTO_TEST_SUITE(Trie_array)
+
+BOOST_AUTO_TEST_CASE(Btree_trie_array_construct_test) {
+    unsigned short btree_node_size = 256;
+    std::pair<bool, std::string> res = test_byte_array_trie(ARPA_TESTFILEPATH, btree_node_size);
+    BOOST_CHECK_MESSAGE(res.first, res.second);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
 BOOST_AUTO_TEST_SUITE(Serialization)
 
 BOOST_AUTO_TEST_CASE(serialization_test) {

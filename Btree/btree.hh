@@ -770,9 +770,11 @@ void B_tree_node_reconstruct(B_tree_node_rec& target, std::vector<unsigned char>
     }
 }
 
-std::pair<bool, Entry> search_byte_arr(std::vector<unsigned char>& byte_arr, Entry key) {
+template<class EntryOrVocabID>  //Work with both full entries or just the vocabID
+std::pair<bool, Entry> search_byte_arr(std::vector<unsigned char>& byte_arr, EntryOrVocabID key, bool pointer2Index = false, unsigned int this_btree_start = 0) {
     //For testing purposes. Tries to find a key in the byte array. This will basically test if
     //our byte array has been stored properly. Uses simple linear search cause I can't be bothered
+    //The this_btree_start argument is used if the byte array contains more than one btrees.
 
     //First, find the size of the root node:
     unsigned short root_size;
@@ -785,15 +787,17 @@ std::pair<bool, Entry> search_byte_arr(std::vector<unsigned char>& byte_arr, Ent
     temp_node.last = false;
     unsigned int start = sizeof(root_size);
     unsigned short size = root_size;
+    std::cout << "Size is: "<< size << " Root size is: " << root_size << " Start is: " << start << std::endl;
     while (!found && !temp_node.last) {
-        B_tree_node_reconstruct(temp_node, byte_arr, start, size);
+        std::cout << "Once " << pointer2Index << std::endl;
+        B_tree_node_reconstruct(temp_node, byte_arr, start + this_btree_start, size, pointer2Index);
 
         for (unsigned short i = 0; i < temp_node.num_entries; i++){
-            if (temp_node.entries[i].value == key.value) {
+            if (temp_node.entries[i].value == key) {
                 found = true;
                 found_entry = temp_node.entries[i];
                 break;
-            } else if (temp_node.entries[i].value > key.value){
+            } else if (temp_node.entries[i].value > key){
                 //Calculate the next start end indexes 
                 start = temp_node.first_child_offset;
                 for (unsigned short j = 0; j < i; j++){
@@ -801,7 +805,7 @@ std::pair<bool, Entry> search_byte_arr(std::vector<unsigned char>& byte_arr, Ent
                 }
                 size = temp_node.children_sizes[i];
                 break;
-            } else if ((temp_node.entries[i].value < key.value) && (i == temp_node.num_entries - 1)) {
+            } else if ((temp_node.entries[i].value < key) && (i == temp_node.num_entries - 1)) {
                 //If we have reached the last entry but the key is still bigger, go to the right node
                 start = temp_node.first_child_offset;
                 for (unsigned short j = 0; j < i; j++) {
