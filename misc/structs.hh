@@ -1,5 +1,6 @@
 #include <vector>
 #include <string.h>
+#include <iostream>
 
 class B_tree; //Forward declaration
 
@@ -11,6 +12,22 @@ struct Entry {
     unsigned int offset; //This is only used when converting the trie to byte array. It is not saved in any of the other serializations.
     //As such we don't care about its value in any other context and we don't test for it!
 };
+
+//Metadata to write on a config file.
+struct LM_metadata {
+    size_t byteArraySize;  //Size in bytes
+    unsigned short max_ngram_order;
+    float api_version;
+    unsigned short btree_node_size;
+};
+
+std::ostream& operator<< (std::ostream &out, LM_metadata &metadata) {
+    out << "Api version: " << metadata.api_version << std::endl
+    << "Byte array size: " << metadata.byteArraySize << std::endl
+    << "Size of the datasctructure in memory is: " << metadata.byteArraySize/(1024*1024) << " MB."<< std::endl
+    << "Max ngram order: " << metadata.max_ngram_order << std::endl;
+    return out;
+}
 
 bool operator> (const Entry &left, const Entry &right) {
     return (left.value > right.value);

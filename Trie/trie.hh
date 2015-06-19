@@ -214,7 +214,7 @@ std::pair<Entry, unsigned short> search_byte_array_trie(std::vector<unsigned cha
 }
 
 template<class StringType>
-B_tree * createTrie(const StringType infile, unsigned short btree_node_size) {
+std::pair<B_tree *, unsigned short> createTrie(const StringType infile, unsigned short btree_node_size) {
     //Constructs a trie from an infile and then checks if it can find every token.
     ArpaReader pesho(infile);
     processed_line text = pesho.readline();
@@ -228,12 +228,35 @@ B_tree * createTrie(const StringType infile, unsigned short btree_node_size) {
     //Btree constructed. Compress it. This is necessary to get rid of empty btrees.
     compressTrie(root_btree);
 
-    return root_btree;  //Burden of free is on the calling function.
+    //Burden of free is on the calling function. Return the btree and the ngram size
+    return std::pair<B_tree *, unsigned short>(root_btree, pesho.max_ngrams);
+}
+
+//Create a byte array trie from filename. We are given the byte_arr and we populate it. We also get a metadata file.
+template<class StringType>
+LM_metadata createTrieArray(const StringType infile, unsigned short btree_node_size, std::vector<unsigned char>& byte_arr){
+    std::pair<B_tree *, unsigned short> Trie_and_max_ngram_size = createTrie(infile, btree_node_size);
+    B_tree * root_btree = Trie_and_max_ngram_size.first;
+    LM_metadata metadata;
+    metadata.api_version = 1.0;
+    metadata.max_ngram_order = Trie_and_max_ngram_size.second;
+    metadata.btree_node_size = btree_node_size;
+
+    //Create a byte array from it;
+    size_t trie_size = calculateTrieSize(root_btree);
+    byte_arr.reserve(trie_size);
+    trieToByteArray(byte_arr, root_btree);
+    metadata.byteArraySize = trie_size;
+
+    //Free the B tree
+    deleteTrie(root_btree);
+
+    return metadata;
 }
 
 template<class StringType>
 std::pair<bool, std::string> test_byte_array_trie(const StringType infile, unsigned short btree_node_size) {
-    B_tree * root_btree = createTrie(infile, btree_node_size);
+    B_tree * root_btree = createTrie(infile, btree_node_size).first;
 
     //Create a byte array from it;
     size_t trie_size = calculateTrieSize(root_btree);
@@ -284,7 +307,7 @@ std::pair<bool, std::string> test_byte_array_trie(const StringType infile, unsig
 template<class StringType>
 std::pair<bool, std::string> test_trie(const StringType infile, unsigned short btree_node_size) {
     //Constructs a trie from an infile and then checks if it can find every token.
-    B_tree * root_btree = createTrie(infile, btree_node_size);
+    B_tree * root_btree = createTrie(infile, btree_node_size).first;
 
     ArpaReader pesho2(infile);
     processed_line text2 = pesho2.readline();
