@@ -22,6 +22,11 @@ struct LM_metadata {
     unsigned short btree_node_size;
 };
 
+bool operator== (const LM_metadata &left, const LM_metadata &right) {
+    return left.byteArraySize == right.byteArraySize && left.max_ngram_order == right.max_ngram_order &&
+           left.api_version == right.api_version && left.btree_node_size == right.btree_node_size;
+}
+
 std::ostream& operator<< (std::ostream &out, LM_metadata &metadata) {
     out << "Api version: " << metadata.api_version << std::endl
     << "Byte array size: " << metadata.byteArraySize << std::endl

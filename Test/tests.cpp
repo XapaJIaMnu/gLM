@@ -296,15 +296,24 @@ BOOST_AUTO_TEST_CASE(serialization_test) {
     std::string filepath = "/tmp/";
     const long double sysTime = time(0);
     std::stringstream s;
-    s << filepath << sysTime;
+    s << filepath << sysTime; //Use random tmp directory
 
-    std::vector<unsigned char> output = {1,2,3,4};
-    SerializeByteArray(output, s.str());
+    //Create the btree_trie_array;
+    std::vector<unsigned char> byte_arr;
+    LM_metadata metadata = createTrieArray(ARPA_TESTFILEPATH, 256, byte_arr);
+    writeBinary(s.str(), byte_arr, metadata);
 
-    std::vector<unsigned char> input;
-    ReadByteArray(input, s.str());
-    BOOST_CHECK_MESSAGE(input == output, "Error, input and output vectors differ.");
-    remove(s.str().c_str());
+    std::vector<unsigned char> input_byte_arr;
+    LM_metadata read_meta = readBinary(s.str(), input_byte_arr);
+
+    BOOST_CHECK_MESSAGE(read_meta == metadata, "Mismatch in the read in and written metadata.");
+    if (!(read_meta == metadata)) { //BOOST_CHECK_MESSAGE doesn't work with overloaded ostreams so print separately.
+        std::cout << "Read metadata:" << std::endl << read_meta << "Written metadata:" << std::endl << metadata;
+    }
+
+    BOOST_CHECK_MESSAGE(input_byte_arr == byte_arr, "Read and written binary byte arrays differ.");
+
+    boost::filesystem::remove_all(s.str());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

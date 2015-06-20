@@ -19,6 +19,7 @@ include_directories ("${PROJECT_SOURCE_DIR}/misc")
 
 add_subdirectory (Test)
 add_subdirectory (misc_testing)
+add_subdirectory (bin)
 #add_subdirectory (Btree)
 #add_subdirectory (Parser)
 enable_testing ()
