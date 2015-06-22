@@ -13,9 +13,9 @@ int main(int argc, char* argv[]){
     } else {
         btree_node_size = atoi(argv[3]);
     }
-    //Create the btree_array;
-    std::vector<unsigned char> byte_arr;
-    LM_metadata metadata = createTrieArray(argv[1], btree_node_size, byte_arr);
-    writeBinary(argv[2], byte_arr, metadata);
+    //Create the LM
+    LM lm;
+    createTrieArray(argv[1], btree_node_size, lm);
+    writeBinary(argv[2], lm);
     return 0;
 }

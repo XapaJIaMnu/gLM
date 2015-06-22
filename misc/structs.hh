@@ -1,6 +1,8 @@
 #include <vector>
+#include <map>
 #include <string.h>
 #include <iostream>
+#define API_VERSION 1.0
 #pragma once
 
 class B_tree; //Forward declaration
@@ -34,6 +36,14 @@ std::ostream& operator<< (std::ostream &out, LM_metadata &metadata) {
     << "Max ngram order: " << metadata.max_ngram_order << std::endl;
     return out;
 }
+
+//A struct that contains all possible and necessary information for an LM
+struct LM {
+    std::vector<unsigned char> trieByteArray;
+    std::map<std::string, unsigned int> encode_map;
+    std::map<unsigned int, std::string> decode_map;
+    LM_metadata metadata;
+};
 
 bool operator> (const Entry &left, const Entry &right) {
     return (left.value > right.value);

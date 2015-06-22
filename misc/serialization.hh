@@ -7,16 +7,15 @@
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/serialization/vector.hpp>
+#include <boost/serialization/map.hpp>
 #include <boost/filesystem.hpp>
 
 //Compress the binary format to bzip2
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/filter/bzip2.hpp> 
 
-#define API_VERSION 1.0
-
-template<class StringType>
-void serializeByteArray(std::vector<unsigned char>& byte_arr, const StringType path){
+template<class StringType, class DataStructure>
+void serializeDatastructure(DataStructure& byte_arr, const StringType path){
     std::ofstream os (path, std::ios::binary);
 
     {// The boost archive needs to be in a separate scope otherwise it doesn't flush properly
@@ -32,8 +31,8 @@ void serializeByteArray(std::vector<unsigned char>& byte_arr, const StringType p
 }
 
 //The byte_arr vector should be reserved to prevent constant realocation.
-template<class StringType>
-void readByteArray(std::vector<unsigned char>& byte_arr, const StringType path){
+template<class StringType, class DataStructure>
+void readDatastructure(DataStructure& byte_arr, const StringType path){
     std::ifstream is (path, std::ios::binary);
 
     if (is.fail() ){
@@ -65,6 +64,9 @@ void storeConfigFile(LM_metadata metadata, const StringType path) {
     configfile << metadata.max_ngram_order << '\n';
     configfile << metadata.api_version << '\n';
     configfile << metadata.btree_node_size << '\n';
+    //Also store in the config file the size of the datastructure. Useful to know if we can fit our model
+    //on the available GPU memory, but we don't actually need to ever read it back. It is for the user's benefit.
+    configfile << "BTree Trie memory size: " << metadata.byteArraySize/(1024*1024) << " MB\n";
     configfile.close();
 }
 
@@ -118,21 +120,24 @@ void createDirIfnotPresent(const StringType path) {
     }
 }
 
-//Given a path to a btree_trie byte array and metadata, stores the model
+//Given a path and an LM binarizes the LM there
 template<class StringType>
-void writeBinary(const StringType path, std::vector<unsigned char>& byte_arr, LM_metadata metadata) {
+void writeBinary(const StringType path, LM& lm) {
     createDirIfnotPresent(path);
     std::string basepath(path);
-    storeConfigFile(metadata, basepath + "/config");
-    serializeByteArray(byte_arr, basepath + "/lm.bin");
+    storeConfigFile(lm.metadata, basepath + "/config");
+    serializeDatastructure(lm.trieByteArray, basepath + "/lm.bin");
+    serializeDatastructure(lm.encode_map, basepath + "/encode.map");
+    serializeDatastructure(lm.decode_map, basepath + "/decode.map");
 }
 
 //Reads the model into the given (presumably empty byte_arr)
 template<class StringType>
-LM_metadata readBinary(const StringType path, std::vector<unsigned char>& byte_arr) {
+void readBinary(const StringType path, LM& lm) {
     std::string basepath(path);
-    LM_metadata metadata = readConfigFile(basepath + "/config");
-    byte_arr.reserve(metadata.byteArraySize);
-    readByteArray(byte_arr, basepath + "/lm.bin");
-    return metadata;
+    lm.metadata = readConfigFile(basepath + "/config");
+    lm.trieByteArray.reserve(lm.metadata.byteArraySize);
+    readDatastructure(lm.trieByteArray, basepath + "/lm.bin");
+    readDatastructure(lm.encode_map, basepath + "/encode.map");
+    readDatastructure(lm.decode_map, basepath + "/decode.map");
 }

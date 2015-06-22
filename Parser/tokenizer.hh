@@ -32,10 +32,9 @@ class ArpaReader {
         std::string next_ngrams_boundary; //The boundary condition for the next \N-grams string
         unsigned int unk_id; //The ID of the <unk> token
 
-        //Maps for converting to and from vocabulary ids to strings.
-        std::map<std::string, unsigned int> encode_map; 
-
     public:
+        //Maps for converting to and from vocabulary ids to strings.
+        std::map<std::string, unsigned int> encode_map;
         std::map<unsigned int, std::string> decode_map;
         unsigned short max_ngrams;
 

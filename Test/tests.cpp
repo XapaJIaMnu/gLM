@@ -299,19 +299,21 @@ BOOST_AUTO_TEST_CASE(serialization_test) {
     s << filepath << sysTime; //Use random tmp directory
 
     //Create the btree_trie_array;
-    std::vector<unsigned char> byte_arr;
-    LM_metadata metadata = createTrieArray(ARPA_TESTFILEPATH, 256, byte_arr);
-    writeBinary(s.str(), byte_arr, metadata);
+    LM out_lm;
+    createTrieArray(ARPA_TESTFILEPATH, 256, out_lm);
+    writeBinary(s.str(), out_lm);
 
-    std::vector<unsigned char> input_byte_arr;
-    LM_metadata read_meta = readBinary(s.str(), input_byte_arr);
+    LM in_lm;
+    readBinary(s.str(), in_lm);
 
-    BOOST_CHECK_MESSAGE(read_meta == metadata, "Mismatch in the read in and written metadata.");
-    if (!(read_meta == metadata)) { //BOOST_CHECK_MESSAGE doesn't work with overloaded ostreams so print separately.
-        std::cout << "Read metadata:" << std::endl << read_meta << "Written metadata:" << std::endl << metadata;
+    BOOST_CHECK_MESSAGE(in_lm.metadata == out_lm.metadata, "Mismatch in the read in and written metadata.");
+    if (!(in_lm.metadata == out_lm.metadata)) { //BOOST_CHECK_MESSAGE doesn't work with overloaded ostreams so print separately.
+        std::cout << "Read metadata:" << std::endl << in_lm.metadata << "Written metadata:" << std::endl << out_lm.metadata;
     }
 
-    BOOST_CHECK_MESSAGE(input_byte_arr == byte_arr, "Read and written binary byte arrays differ.");
+    BOOST_CHECK_MESSAGE(out_lm.trieByteArray == in_lm.trieByteArray, "Read and written binary byte arrays differ.");
+    BOOST_CHECK_MESSAGE(out_lm.encode_map == in_lm.encode_map, "Read and written encode maps differ.");
+    BOOST_CHECK_MESSAGE(out_lm.decode_map == in_lm.decode_map, "Read and written decode maps differ.");
 
     boost::filesystem::remove_all(s.str());
 }
