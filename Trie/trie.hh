@@ -220,14 +220,6 @@ B_tree * createTrie(const StringType infile, unsigned short btree_node_size, LM&
     processed_line text = pesho.readline();
     B_tree * root_btree = new B_tree(btree_node_size);
 
-    //Populate the LM with necessary information here:
-    lm.encode_map = pesho.encode_map;
-    lm.decode_map = pesho.decode_map;
-
-    lm.metadata.api_version = API_VERSION;
-    lm.metadata.max_ngram_order = pesho.max_ngrams;
-    lm.metadata.btree_node_size = btree_node_size;
-
     while (!text.filefinished){
         addToTrie(root_btree, text, pesho.max_ngrams, btree_node_size);
         text = pesho.readline();
@@ -235,6 +227,14 @@ B_tree * createTrie(const StringType infile, unsigned short btree_node_size, LM&
 
     //Btree constructed. Compress it. This is necessary to get rid of empty btrees.
     compressTrie(root_btree);
+
+    //Populate the LM with necessary information here:
+    lm.encode_map = pesho.encode_map;
+    lm.decode_map = pesho.decode_map;
+
+    lm.metadata.api_version = API_VERSION;
+    lm.metadata.max_ngram_order = pesho.max_ngrams;
+    lm.metadata.btree_node_size = btree_node_size;
 
     //Burden of free is on the calling function. Return the btree and the ngram size
     return root_btree;
