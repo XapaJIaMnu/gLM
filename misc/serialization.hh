@@ -9,13 +9,25 @@
 #include <boost/serialization/vector.hpp>
 #include <boost/filesystem.hpp>
 
+//Compress the binary format to bzip2
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/filter/bzip2.hpp> 
+
 #define API_VERSION 1.0
 
 template<class StringType>
 void serializeByteArray(std::vector<unsigned char>& byte_arr, const StringType path){
     std::ofstream os (path, std::ios::binary);
-    boost::archive::text_oarchive oarch(os);
-    oarch << byte_arr;
+
+    {// The boost archive needs to be in a separate scope otherwise it doesn't flush properly
+        //Create a bzip2 compressed filtered stream
+        boost::iostreams::filtering_stream<boost::iostreams::output> filtered_stream;
+        filtered_stream.push(boost::iostreams::bzip2_compressor());
+        filtered_stream.push(os);
+
+        boost::archive::text_oarchive oarch(filtered_stream);
+        oarch << byte_arr;
+    }
     os.close();
 }
 
@@ -28,9 +40,15 @@ void readByteArray(std::vector<unsigned char>& byte_arr, const StringType path){
         std::cerr << "Failed to open file " << path << std::endl;
         std::exit(EXIT_FAILURE);
     }
+    {// The boost archive needs to be in a separate scope otherwise it doesn't flush properly
+        //Create a bzip2 compressed filtered stream for decopression
+        boost::iostreams::filtering_stream<boost::iostreams::input> filtered_stream;
+        filtered_stream.push(boost::iostreams::bzip2_decompressor());
+        filtered_stream.push(is);
 
-    boost::archive::text_iarchive iarch(is);
-    iarch >> byte_arr;
+        boost::archive::text_iarchive iarch(filtered_stream);
+        iarch >> byte_arr;
+    }
     is.close();
 }
 
