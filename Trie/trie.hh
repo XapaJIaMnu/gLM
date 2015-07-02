@@ -8,11 +8,13 @@ class offsetTooBig: public std::exception
   virtual const char* what() const throw()
   {
     return "The offset is too big to fit in unsigned int. The trie needs to be sharded.";
-  }
+  };
 } offsetEx;
 
-void throwIfOverfow(unsigned int offset, unsigned int next_level_size) noexcept(false) {
-    if ((std::numeric_limits<unsigned int>::max() - offset) < next_level_size) {
+//Throws if the number is too big to fit in unsigned int. Necessary
+//because we don't support yet Tries larger than 4 GBs in memory (about 10 GBs of arpa file)
+void throwIfTooBig(size_t trie_size_in_bytes) noexcept(false) {
+    if (trie_size_in_bytes > std::numeric_limits<unsigned int>::max()) {
         throw offsetEx;
     }
 }
@@ -153,8 +155,8 @@ std::pair<Entry, unsigned short> findNgram(B_tree * root_trie, std::vector<unsig
     return std::pair<Entry, unsigned short>(ret, level);
 }
 
-//Convert the whole Trie to a byte array. Throws if offset becomes too big.
-void trieToByteArray(std::vector<unsigned char>& byte_arr, B_tree * root_trie) noexcept(false) {
+//Convert the whole Trie to a byte array.
+void trieToByteArray(std::vector<unsigned char>& byte_arr, B_tree * root_trie) {
     bool pointer2Index = true; //We are converting the B_tree * to offset index.
     unsigned int offset = root_trie->getTotalTreeSize(pointer2Index); //Offset from the start of the the array to the desired element
 
@@ -171,11 +173,6 @@ void trieToByteArray(std::vector<unsigned char>& byte_arr, B_tree * root_trie) n
             if (entry->next_level) {
                 entry->offset = offset;  //Set the offset here
 
-                //Throw if overflow
-                unsigned int next_level_size = entry->next_level->getTotalTreeSize(pointer2Index);
-                throwIfOverfow(offset, next_level_size);
-
-                //We didn't throw, proceed as usual.
                 offset+= entry->next_level->getTotalTreeSize(pointer2Index);
                 btrees_to_explore.push(entry->next_level);
             } else {
@@ -243,12 +240,13 @@ B_tree * createTrie(const StringType infile, unsigned short btree_node_size, LM&
 //Create a byte array trie from filename. We are given the byte_arr and we populate it. We also get a metadata file.
 //This function basically constructs all necessary datastructures
 template<class StringType>
-void createTrieArray(const StringType infile, unsigned short btree_node_size, LM& lm){
+void createTrieArray(const StringType infile, unsigned short btree_node_size, LM& lm) noexcept(false) {
     //get Btree_trie
     B_tree * root_btree_trie = createTrie(infile, btree_node_size, lm);
 
     //Create a byte array from it and update metadata;
     size_t trie_size = calculateTrieSize(root_btree_trie);
+    throwIfTooBig(trie_size);  // We only support maximum size of Trie up to 4 GBs for now. Throw otherwise.
     lm.trieByteArray.reserve(trie_size);
     trieToByteArray(lm.trieByteArray, root_btree_trie);
     lm.metadata.byteArraySize = trie_size;
@@ -258,7 +256,7 @@ void createTrieArray(const StringType infile, unsigned short btree_node_size, LM
 }
 
 template<class StringType>
-std::pair<bool, std::string> test_byte_array_trie(const StringType infile, unsigned short btree_node_size) {
+std::pair<bool, std::string> test_byte_array_trie(const StringType infile, unsigned short btree_node_size) noexcept(false) {
 
     //Dummy LM to pass to the function, not necessary for the test:
     LM dummy_lm;
@@ -266,6 +264,7 @@ std::pair<bool, std::string> test_byte_array_trie(const StringType infile, unsig
 
     //Create a byte array from it;
     size_t trie_size = calculateTrieSize(root_btree);
+    throwIfTooBig(trie_size);  // We only support maximum size of Trie up to 4 GBs for now. Throw otherwise.
     std::vector<unsigned char>byte_arr;
     byte_arr.reserve(trie_size);
     trieToByteArray(byte_arr, root_btree);
