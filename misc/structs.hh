@@ -41,45 +41,38 @@ void EntriesToByteArray(std::vector<unsigned char> &byte_array, std::vector<Entr
     //Entries are stored in the following way: ALLKEYS_datakey1_datakey2_etc
     //This is a bit counter intuitive but permits for better memory accesses on the gpu and is similar to a b+tree
 
-    unsigned int offset = 0; //Keep track of where in the byte array we start putting things
+    unsigned int offset = byte_array.size(); //Keep track of where in the byte array we start putting things
 
-    //First push the values onto the temporary array;
-    //This will only work if the byte_array vector is reserved so we check for the necessary size.
-    unsigned char * tmparr = new unsigned char[getEntrySize(pointer2Index)*entries.size()]; //Temporary container
+    //First push the values onto the byte array
+    //We use resize a bit hacky here - We are changing the .size() value so that when we use push_back it works
+    //Basically we bump the size for all elements we are going to insert using memcpy.
+    byte_array.resize(byte_array.size() + getEntrySize(pointer2Index)*entries.size());
 
     for (auto entry : entries) {
-        std::memcpy(tmparr + offset, &entry.value, sizeof(entry.value));
+        std::memcpy(byte_array.data() + offset, &entry.value, sizeof(entry.value));
         offset += sizeof(entry.value);
     }
 
     //Then everything else
     if (pointer2Index) {
         for (auto entry : entries) {
-            std::memcpy(tmparr + offset, &entry.offset, sizeof(entry.offset));
+            std::memcpy(byte_array.data() + offset, &entry.offset, sizeof(entry.offset));
             offset += sizeof(entry.offset);
-            std::memcpy(tmparr + offset, &entry.prob, sizeof(entry.prob));
+            std::memcpy(byte_array.data() + offset, &entry.prob, sizeof(entry.prob));
             offset += sizeof(entry.prob);
-            std::memcpy(tmparr + offset, &entry.backoff, sizeof(entry.backoff));
+            std::memcpy(byte_array.data() + offset, &entry.backoff, sizeof(entry.backoff));
             offset += sizeof(entry.backoff);
         }
     } else {
         for (auto entry : entries) {
-            std::memcpy(tmparr + offset, &entry.next_level, sizeof(entry.next_level));
+            std::memcpy(byte_array.data() + offset, &entry.next_level, sizeof(entry.next_level));
             offset += sizeof(entry.next_level);
-            std::memcpy(tmparr + offset, &entry.prob, sizeof(entry.prob));
+            std::memcpy(byte_array.data() + offset, &entry.prob, sizeof(entry.prob));
             offset += sizeof(entry.prob);
-            std::memcpy(tmparr + offset, &entry.backoff, sizeof(entry.backoff));
+            std::memcpy(byte_array.data() + offset, &entry.backoff, sizeof(entry.backoff));
             offset += sizeof(entry.backoff);
         }
     }
-
-    //Now push everything onto the byte array. We need to do this (and not push directly onto the byte array)
-    //Because otherwise we don't update the vector size and all other operations which use push_back fail. It
-    //is inefficient though ;/. A proper solution would involve to get rid of push_back probably
-    for (unsigned int i = 0; i < getEntrySize(pointer2Index)*entries.size(); i++){
-        byte_array.push_back(tmparr[i]);
-    }
-    delete[] tmparr;
 }
 
 Entry * byteArrayToEntries(std::vector<unsigned char> &byte_array, int num_entries, unsigned int start_idx, bool pointer2Index = false) {
