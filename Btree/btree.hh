@@ -375,10 +375,7 @@ void B_tree_node::toByteArray(std::vector<unsigned char>& byte_arr, unsigned int
     }
 
     //Copy the words
-    for (auto entry : words) {
-        EntryToByteArray(byte_arr, entry, pointer2Index);
-    }
-
+    EntriesToByteArray(byte_arr, words, pointer2Index);
 }
 
 void B_tree_node::insert(B_tree_node * new_node, int location){
@@ -743,32 +740,17 @@ void B_tree_node_reconstruct(B_tree_node_rec& target, std::vector<unsigned char>
         target.children_sizes = children_sizes;
 
         //Construct the entries vector
-        Entry * entries_vec = new Entry[num_entries];
-        for (unsigned short i = 0; i < num_entries; i++){
-            std::vector<unsigned char>::const_iterator start_iter = byte_arr.begin() + start + 1 + sizeof(unsigned int) +
-                (num_entries+1)*sizeof(unsigned short) + i*entry_size;
-            std::vector<unsigned char>::const_iterator end_iter = byte_arr.begin() + start + 1 + sizeof(unsigned int) +
-                (num_entries+1)*sizeof(unsigned short) + (i+1)*entry_size;
-            std::vector<unsigned char>sub_byte_arr(start_iter, end_iter);
-            entries_vec[i] = byteArrayToEntry(sub_byte_arr.data(), pointer2Index);
-        }
-        target.entries = entries_vec;
+        unsigned int entries_start_offset = start + 1 + sizeof(unsigned int) + (num_entries+1)*sizeof(unsigned short);
+        target.entries = byteArrayToEntries(byte_arr, num_entries, entries_start_offset, pointer2Index);
         target.num_entries = num_entries;
     } else {
         //We only have entries
         unsigned short num_entries = (size - 1)/getEntrySize(pointer2Index);
         assert(((size - 1)%getEntrySize(pointer2Index)) == 0); //Sanity check, checks if we have supplied correct parameters
 
-        Entry * entries_vec = new Entry[num_entries];
-        for (unsigned short i = 0; i < num_entries; i++){
-            std::vector<unsigned char>::const_iterator start_iter = byte_arr.begin() + start + 1 + i*entry_size;
-            std::vector<unsigned char>::const_iterator end_iter = byte_arr.begin() + start + 1 + (i+1)*entry_size;
-            std::vector<unsigned char>sub_byte_arr(start_iter, end_iter);
-            entries_vec[i] = byteArrayToEntry(sub_byte_arr.data(), pointer2Index);
-        }
-        target.entries = entries_vec;
+        unsigned int entries_start_offset = start + 1;
+        target.entries = byteArrayToEntries(byte_arr, num_entries, entries_start_offset, pointer2Index);
         target.num_entries = num_entries;
-
     }
 }
 

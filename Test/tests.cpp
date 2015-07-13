@@ -251,31 +251,54 @@ BOOST_AUTO_TEST_SUITE(Byte_array)
 
 BOOST_AUTO_TEST_CASE(entry_byte_array_conversion_test) {
     Entry entry = {23, nullptr, 0.5, 0.75};
+    Entry entry2 = {24, nullptr, 0.75, 0.5};
+    std::vector<Entry> entryvec;
+    entryvec.push_back(entry);
+    entryvec.push_back(entry2);
+
     std::vector<unsigned char> byte_arr;
-    EntryToByteArray(byte_arr, entry);
+    byte_arr.reserve(2*getEntrySize());
+    EntriesToByteArray(byte_arr, entryvec);
 
-    Entry new_entry = byteArrayToEntry(byte_arr.data());
-    BOOST_CHECK_MESSAGE(entry.value == new_entry.value, "Got " << new_entry.value << " expected " << entry.value << ".");
-    BOOST_CHECK_MESSAGE(entry.next_level == new_entry.next_level, "Got " << new_entry.next_level << " expected " << entry.next_level << ".");
-    BOOST_CHECK_MESSAGE(entry.prob == new_entry.prob, "Got " << new_entry.prob << " expected " << entry.prob << ".");
-    BOOST_CHECK_MESSAGE(entry.backoff == new_entry.backoff, "Got " << new_entry.backoff << " expected " << entry.backoff << ".");
+    Entry * new_entries = byteArrayToEntries(byte_arr, 2, 0);
+    BOOST_CHECK_MESSAGE(entry.value == new_entries[0].value, "Got " << new_entries[0].value << " expected " << entry.value << ".");
+    BOOST_CHECK_MESSAGE(entry.next_level == new_entries[0].next_level, "Got " << new_entries[0].next_level << " expected " << entry.next_level << ".");
+    BOOST_CHECK_MESSAGE(entry.prob == new_entries[0].prob, "Got " << new_entries[0].prob << " expected " << entry.prob << ".");
+    BOOST_CHECK_MESSAGE(entry.backoff == new_entries[0].backoff, "Got " << new_entries[0].backoff << " expected " << entry.backoff << ".");
 
+    BOOST_CHECK_MESSAGE(entry2.value == new_entries[1].value, "Got " << new_entries[1].value << " expected " << entry2.value << ".");
+    BOOST_CHECK_MESSAGE(entry2.next_level == new_entries[1].next_level, "Got " << new_entries[1].next_level << " expected " << entry2.next_level << ".");
+    BOOST_CHECK_MESSAGE(entry2.prob == new_entries[1].prob, "Got " << new_entries[1].prob << " expected " << entry2.prob << ".");
+    BOOST_CHECK_MESSAGE(entry2.backoff == new_entries[1].backoff, "Got " << new_entries[1].backoff << " expected " << entry2.backoff << ".");
+    delete[] new_entries;
 }
 
 BOOST_AUTO_TEST_CASE(entry_byte_array_conversion_test_index) {
     bool pointer2Index = true;
     B_tree * boguspoiter = (B_tree *)123;
     Entry entry = {23, boguspoiter, 0.5, 0.75, 123};
-    std::vector<unsigned char> byte_arr;
-    EntryToByteArray(byte_arr, entry, pointer2Index);
+    Entry entry2 = {24, boguspoiter, 0.6, 0.85, 124};
+    std::vector<Entry> entryvec;
+    entryvec.push_back(entry);
+    entryvec.push_back(entry2);
 
-    Entry new_entry = byteArrayToEntry(byte_arr.data(), pointer2Index);
-    BOOST_CHECK_MESSAGE(entry.value == new_entry.value, "Got " << new_entry.value << " expected " << entry.value << ".");
-    BOOST_CHECK_MESSAGE(new_entry.next_level == nullptr, "Got " << new_entry.next_level << " expected " << (size_t)nullptr << ".");
-    BOOST_CHECK_MESSAGE(entry.prob == new_entry.prob, "Got " << new_entry.prob << " expected " << entry.prob << ".");
-    BOOST_CHECK_MESSAGE(entry.backoff == new_entry.backoff, "Got " << new_entry.backoff << " expected " << entry.backoff << ".");
-    BOOST_CHECK_MESSAGE(entry.offset == new_entry.offset, "Got " << new_entry.offset << " expected " << entry.offset << ".");
-    
+    std::vector<unsigned char> byte_arr;
+    byte_arr.reserve(2*getEntrySize(pointer2Index));
+    EntriesToByteArray(byte_arr, entryvec, pointer2Index);
+
+    Entry * new_entries = byteArrayToEntries(byte_arr, 2, 0, pointer2Index);
+    BOOST_CHECK_MESSAGE(entry.value == new_entries[0].value, "Got " << new_entries[0].value << " expected " << entry.value << ".");
+    BOOST_CHECK_MESSAGE(new_entries[0].next_level == nullptr, "Got " << new_entries[0].next_level << " expected " << (size_t)nullptr << ".");
+    BOOST_CHECK_MESSAGE(entry.prob == new_entries[0].prob, "Got " << new_entries[0].prob << " expected " << entry.prob << ".");
+    BOOST_CHECK_MESSAGE(entry.backoff == new_entries[0].backoff, "Got " << new_entries[0].backoff << " expected " << entry.backoff << ".");
+    BOOST_CHECK_MESSAGE(entry.offset == new_entries[0].offset, "Got " << new_entries[0].offset << " expected " << entry.offset << ".");
+
+    BOOST_CHECK_MESSAGE(entry2.value == new_entries[1].value, "Got " << new_entries[1].value << " expected " << entry.value << ".");
+    BOOST_CHECK_MESSAGE(new_entries[1].next_level == nullptr, "Got " << new_entries[1].next_level << " expected " << (size_t)nullptr << ".");
+    BOOST_CHECK_MESSAGE(entry2.prob == new_entries[1].prob, "Got " << new_entries[1].prob << " expected " << entry.prob << ".");
+    BOOST_CHECK_MESSAGE(entry2.backoff == new_entries[1].backoff, "Got " << new_entries[1].backoff << " expected " << entry.backoff << ".");
+    BOOST_CHECK_MESSAGE(entry2.offset == new_entries[1].offset, "Got " << new_entries[1].offset << " expected " << entry.offset << ".");
+    delete[] new_entries;
 }
 
 BOOST_AUTO_TEST_SUITE_END()

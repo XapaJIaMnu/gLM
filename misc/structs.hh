@@ -1,6 +1,7 @@
 #include <vector>
 #include <map>
 #include <string.h>
+#include <cstring>
 #include <iostream>
 #include "entry_structs.hh"
 #define API_VERSION 1.0
@@ -35,65 +36,89 @@ struct LM {
     LM_metadata metadata;
 };
 
-void EntryToByteArray(std::vector<unsigned char> &byte_array, Entry& entry, bool pointer2Index = false) {
-    /*Converts an Entry to a byte array and appends it to the given vector of bytes*/
-    unsigned char entry_size_bytes = getEntrySize(pointer2Index);
-    unsigned char temparr[entry_size_bytes]; //Array used as a temporary container
-    unsigned char accumulated_size = 0;  //How much we have copied thus far
+void EntriesToByteArray(std::vector<unsigned char> &byte_array, std::vector<Entry> &entries, bool pointer2Index = false) {
+    //Appends a multitude of entries to the byte array.
+    //Entries are stored in the following way: ALLKEYS_datakey1_datakey2_etc
+    //This is a bit counter intuitive but permits for better memory accesses on the gpu and is similar to a b+tree
 
-    memcpy(&temparr[accumulated_size], (unsigned char *)&entry.value, sizeof(entry.value));
-    accumulated_size+= sizeof(entry.value);
+    unsigned int offset = 0; //Keep track of where in the byte array we start putting things
 
-    //Convert the next_level to bytes. It could be a pointer or an unsigned int
+    //First push the values onto the temporary array;
+    //This will only work if the byte_array vector is reserved so we check for the necessary size.
+    unsigned char * tmparr = new unsigned char[getEntrySize(pointer2Index)*entries.size()]; //Temporary container
+
+    for (auto entry : entries) {
+        std::memcpy(tmparr + offset, &entry.value, sizeof(entry.value));
+        offset += sizeof(entry.value);
+    }
+
+    //Then everything else
     if (pointer2Index) {
-        memcpy(&temparr[accumulated_size], (unsigned char *)&entry.offset, sizeof(entry.offset));
-        accumulated_size+=sizeof(entry.offset);
+        for (auto entry : entries) {
+            std::memcpy(tmparr + offset, &entry.offset, sizeof(entry.offset));
+            offset += sizeof(entry.offset);
+            std::memcpy(tmparr + offset, &entry.prob, sizeof(entry.prob));
+            offset += sizeof(entry.prob);
+            std::memcpy(tmparr + offset, &entry.backoff, sizeof(entry.backoff));
+            offset += sizeof(entry.backoff);
+        }
     } else {
-        memcpy(&temparr[accumulated_size], (unsigned char *)&entry.next_level, sizeof(entry.next_level));
-        accumulated_size+=sizeof(entry.next_level);
+        for (auto entry : entries) {
+            std::memcpy(tmparr + offset, &entry.next_level, sizeof(entry.next_level));
+            offset += sizeof(entry.next_level);
+            std::memcpy(tmparr + offset, &entry.prob, sizeof(entry.prob));
+            offset += sizeof(entry.prob);
+            std::memcpy(tmparr + offset, &entry.backoff, sizeof(entry.backoff));
+            offset += sizeof(entry.backoff);
+        }
     }
 
-    memcpy(&temparr[accumulated_size], (unsigned char *)&entry.prob, sizeof(entry.prob));
-    accumulated_size+=sizeof(entry.prob);
-
-    memcpy(&temparr[accumulated_size], (unsigned char *)&entry.backoff, sizeof(entry.backoff));
-
-    for (unsigned char i = 0; i < entry_size_bytes; i++) {
-        byte_array.push_back(temparr[i]);
+    //Now push everything onto the byte array. We need to do this (and not push directly onto the byte array)
+    //Because otherwise we don't update the vector size and all other operations which use push_back fail. It
+    //is inefficient though ;/. A proper solution would involve to get rid of push_back probably
+    for (unsigned int i = 0; i < getEntrySize(pointer2Index)*entries.size(); i++){
+        byte_array.push_back(tmparr[i]);
     }
+    delete[] tmparr;
 }
 
-Entry byteArrayToEntry(unsigned char * input_arr, bool pointer2Index = false) {
-    //MAKE SURE YOU FREE THE ARRAY!
-    unsigned int value;
-    B_tree * next_level;
-    float prob;
-    float backoff;
-    unsigned int offset;
+Entry * byteArrayToEntries(std::vector<unsigned char> &byte_array, int num_entries, unsigned int start_idx, bool pointer2Index = false) {
+    //We return a pointer to array of entries. Burden of free is on the calling function!!!
+    Entry * entries = new Entry[num_entries];
+    unsigned int current_idx = start_idx;
 
-    unsigned char accumulated_size = 0; //Keep track of the array index
-
-    memcpy((unsigned char *)&value, &input_arr[accumulated_size], sizeof(value));
-    accumulated_size+= sizeof(value);
-
-    //If we have a offset instead of pointer we read in less bytes (4 vs 8)
-    if (pointer2Index) {
-        next_level = nullptr; //we only have information about the offset here so the pointer is invalid;
-
-        memcpy((unsigned char *)&offset, &input_arr[accumulated_size], sizeof(offset));
-        accumulated_size+=sizeof(offset);
-    } else {
-        offset = 0; //Default offset. We only set it if pointer2Index is true;
-
-        memcpy((unsigned char *)&next_level, &input_arr[accumulated_size], sizeof(next_level));
-        accumulated_size+=sizeof(next_level);
+    //First get all values
+    for (int i = 0; i < num_entries; i++) {
+        std::memcpy(&entries[i].value, &byte_array[current_idx], sizeof(entries[i].value));
+        current_idx += sizeof(entries[i].value);
     }
-    
-    memcpy((unsigned char *)&prob, &input_arr[accumulated_size], sizeof(prob));
-    accumulated_size+=sizeof(prob);
 
-    memcpy((unsigned char *)&backoff, &input_arr[accumulated_size], sizeof(backoff));
+    //Then the rest of the information from the entries
+    if (pointer2Index) {
+        for (int i = 0; i < num_entries; i++) {
+            std::memcpy(&entries[i].offset, &byte_array[current_idx], sizeof(entries[i].offset));
+            current_idx += sizeof(entries[i].offset);
+            std::memcpy(&entries[i].prob, &byte_array[current_idx], sizeof(entries[i].prob));
+            current_idx += sizeof(entries[i].prob);
+            std::memcpy(&entries[i].backoff, &byte_array[current_idx], sizeof(entries[i].backoff));
+            current_idx += sizeof(entries[i].backoff);
 
-    Entry ret = {value, next_level, prob, backoff, offset};
-    return ret;
+            //Set the unused B_tree * to nullptr to catch errors if somebody tries to use it
+            entries[i].next_level = nullptr;
+        }
+    } else {
+        for (int i = 0; i < num_entries; i++) {
+            std::memcpy(&entries[i].next_level, &byte_array[current_idx], sizeof(entries[i].next_level));
+            current_idx += sizeof(entries[i].next_level);
+            std::memcpy(&entries[i].prob, &byte_array[current_idx], sizeof(entries[i].prob));
+            current_idx += sizeof(entries[i].prob);
+            std::memcpy(&entries[i].backoff, &byte_array[current_idx], sizeof(entries[i].backoff));
+            current_idx += sizeof(entries[i].backoff);
+
+            //Set the unused offset to 0.
+            entries[i].offset = 0;
+        }
+    }
+
+    return entries;
 }
