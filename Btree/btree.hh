@@ -745,9 +745,9 @@ void B_tree_node_reconstruct(B_tree_node_rec& target, std::vector<unsigned char>
         //Construct the entries vector
         Entry * entries_vec = new Entry[num_entries];
         for (unsigned short i = 0; i < num_entries; i++){
-            std::vector<unsigned char>::const_iterator start_iter = byte_arr.begin() + start + 1 + sizeof(unsigned int) + 
+            std::vector<unsigned char>::const_iterator start_iter = byte_arr.begin() + start + 1 + sizeof(unsigned int) +
                 (num_entries+1)*sizeof(unsigned short) + i*entry_size;
-            std::vector<unsigned char>::const_iterator end_iter = byte_arr.begin() + start + 1 + sizeof(unsigned int) + 
+            std::vector<unsigned char>::const_iterator end_iter = byte_arr.begin() + start + 1 + sizeof(unsigned int) +
                 (num_entries+1)*sizeof(unsigned short) + (i+1)*entry_size;
             std::vector<unsigned char>sub_byte_arr(start_iter, end_iter);
             entries_vec[i] = byteArrayToEntry(sub_byte_arr.data(), pointer2Index);
