@@ -1,6 +1,5 @@
 #include <vector>
 #include <map>
-#include <string.h>
 #include <cstring>
 #include <iostream>
 #include "entry_structs.hh"
