@@ -9,6 +9,13 @@ struct Entry {
     //As such we don't care about its value in any other context and we don't test for it!
 };
 
+struct Entry_offset {
+    unsigned int value;
+    unsigned int next_level; //This used to be the offset
+    float prob;
+    float backoff;
+};
+
 bool operator> (const Entry &left, const Entry &right) {
     return (left.value > right.value);
 }

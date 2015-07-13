@@ -330,7 +330,7 @@ unsigned short B_tree_node::getNodeSize(bool pointer2Index){
 
 void B_tree_node::toByteArray(std::vector<unsigned char>& byte_arr, unsigned int children_offset, bool pointer2Index = false){
     /*Appends to the byte_array the contents of this node in the following order:
-    (bool isLast)(words-in-byte-array)(first-child-offset (unsigned int))((children)-offsets (unsigned short))
+    (bool isLast)(first-child-offset (unsigned int))((children)-offsets (unsigned short))(words-in-byte-array)
     the children_offsets parameter will tell us how many elements there are going to be between us and our first child.
     If we don't have children, we just contain the bool and the words array*/
 
@@ -343,11 +343,6 @@ void B_tree_node::toByteArray(std::vector<unsigned char>& byte_arr, unsigned int
     }
     //Copy the bool
     byte_arr.push_back(static_cast<unsigned char>(last));
-
-    //Copy the words
-    for (auto entry : words) {
-        EntryToByteArray(byte_arr, entry, pointer2Index);
-    }
 
     if (!last) {
     //We only need to do this if we actually have children.
@@ -377,6 +372,11 @@ void B_tree_node::toByteArray(std::vector<unsigned char>& byte_arr, unsigned int
         for (unsigned short i = 0; i < bytearr_size; i++){
             byte_arr.push_back(childsizes_arr[i]);
         }
+    }
+
+    //Copy the words
+    for (auto entry : words) {
+        EntryToByteArray(byte_arr, entry, pointer2Index);
     }
 
 }
@@ -714,7 +714,7 @@ void B_tree_node_reconstruct(B_tree_node_rec& target, std::vector<unsigned char>
 
     if (!last) {
         //Calculate the indexes knowing the structure of the byte array:
-        //(bool isLast)(words-in-byte-array)(first-child-offset (unsigned int))((children)-offsets (unsigned short))
+        //(bool isLast)(first-child-offset (unsigned int))((children)-offsets (unsigned short))(words-in-byte-array)
         unsigned short remaining_elements = size - 1;
         /*Equation is num_entries = size - bool - first_child_offset - last_entry_size + x*(unsigned short (for the remaining entries)
         + sizeof(word))*/
@@ -722,29 +722,18 @@ void B_tree_node_reconstruct(B_tree_node_rec& target, std::vector<unsigned char>
         assert((num_entries % (entry_size + sizeof(unsigned short))) == 0); //Sanity check, checks if we have supplied correct parameters
         num_entries = num_entries/(entry_size + sizeof(unsigned short));
 
-        Entry * entries_vec = new Entry[num_entries];
         unsigned short * children_sizes = new unsigned short[num_entries+1];
-
-        //Construct the entries vector
-        for (unsigned short i = 0; i < num_entries; i++){
-            std::vector<unsigned char>::const_iterator start_iter = byte_arr.begin() + start + 1 + i*entry_size;
-            std::vector<unsigned char>::const_iterator end_iter = byte_arr.begin() + start + 1 + (i+1)*entry_size;
-            std::vector<unsigned char>sub_byte_arr(start_iter, end_iter);
-            entries_vec[i] = byteArrayToEntry(sub_byte_arr.data(), pointer2Index);
-        }
-        target.entries = entries_vec;
-        target.num_entries = num_entries;
 
         //Get the first child offset (in absolute terms, from the start of the array);
         unsigned char tmp_arr[sizeof(unsigned int)];
         for (size_t i = 0; i < sizeof(unsigned int); i++) {
-            tmp_arr[i] = byte_arr[start + 1 + num_entries*entry_size + i];
+            tmp_arr[i] = byte_arr[start + 1 + i];
         }
         memcpy((unsigned char *)&target.first_child_offset, tmp_arr, sizeof(unsigned int));
 
         //Get the sizes of each child
         unsigned char tmp_arr2[sizeof(unsigned short)];
-        unsigned int first_child_size_position = start + 1 + num_entries*entry_size + sizeof(unsigned int);
+        unsigned int first_child_size_position = start + 1 + sizeof(unsigned int);
         for (unsigned short i = 0; i < num_entries+1; i++){
             tmp_arr2[0] = byte_arr[first_child_size_position + i*2];
             tmp_arr2[1] = byte_arr[first_child_size_position + i*2 + 1];
@@ -752,6 +741,19 @@ void B_tree_node_reconstruct(B_tree_node_rec& target, std::vector<unsigned char>
         }
 
         target.children_sizes = children_sizes;
+
+        //Construct the entries vector
+        Entry * entries_vec = new Entry[num_entries];
+        for (unsigned short i = 0; i < num_entries; i++){
+            std::vector<unsigned char>::const_iterator start_iter = byte_arr.begin() + start + 1 + sizeof(unsigned int) + 
+                (num_entries+1)*sizeof(unsigned short) + i*entry_size;
+            std::vector<unsigned char>::const_iterator end_iter = byte_arr.begin() + start + 1 + sizeof(unsigned int) + 
+                (num_entries+1)*sizeof(unsigned short) + (i+1)*entry_size;
+            std::vector<unsigned char>sub_byte_arr(start_iter, end_iter);
+            entries_vec[i] = byteArrayToEntry(sub_byte_arr.data(), pointer2Index);
+        }
+        target.entries = entries_vec;
+        target.num_entries = num_entries;
     } else {
         //We only have entries
         unsigned short num_entries = (size - 1)/getEntrySize(pointer2Index);
