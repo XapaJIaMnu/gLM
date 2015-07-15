@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.0)
-project (gLM)
+project (gLM C CXX)
 
 #Debug build by default!
 if (DEFINED BUILDTYPE)
@@ -21,6 +21,7 @@ include_directories ("${PROJECT_SOURCE_DIR}/gpu")
 add_subdirectory (Test)
 add_subdirectory (misc_testing)
 add_subdirectory (bin)
+add_subdirectory (gpu)
 #add_subdirectory (Btree)
 #add_subdirectory (Parser)
 enable_testing ()
