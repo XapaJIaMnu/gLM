@@ -1,5 +1,6 @@
 #include "btree.hh"
 #include "memory_management.hh"
+#include "gpu_search.hh"
 
 int main(int argc, char* argv[]) {
     //Defaults
@@ -34,5 +35,10 @@ int main(int argc, char* argv[]) {
     pesho->toByteArray(byte_arr);
 
     unsigned char * gpuByteArray = copyToGPUMemory(byte_arr.data(), byte_arr.size());
+    for (std::set<unsigned int>::iterator it = prev_nums.begin(); it != prev_nums.end(); it++){
+        unsigned short * first_node_size = reinterpret_cast<unsigned short *>(&byte_arr.data()[0]);
+        searchWrapper(gpuByteArray, 0, *first_node_size, *it, 1, 5);
+    }
+    freeGPUMemory(gpuByteArray);
 
 }

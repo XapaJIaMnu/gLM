@@ -7,3 +7,7 @@ unsigned char * copyToGPUMemory(unsigned char * byte_arr, unsigned int byte_arr_
     CHECK_CALL(cudaMemcpy(gpu_byte_arr, byte_arr, byte_arr_size*sizeof(unsigned char), cudaMemcpyHostToDevice));
     return gpu_byte_arr;
 }
+
+void freeGPUMemory(unsigned char * gpu_ptr) {
+    CHECK_CALL(cudaFree(gpu_ptr));
+}
