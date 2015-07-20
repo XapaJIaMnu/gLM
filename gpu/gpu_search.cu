@@ -2,7 +2,7 @@
 //#include "entry_structs.hh"
 #include <cuda_runtime.h>
 
-#define MAX_NUM_CHILDREN 256
+#define MAX_NUM_CHILDREN 6
 #define ENTRIES_PER_NODE MAX_NUM_CHILDREN - 1
 //Assume working with 256 thread DON'T RELY ENTIRERLY ON THOSE! Size may be smaller. need a parameter.
 //Requires two more threads then num of entries per node
@@ -17,16 +17,20 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
     __shared__ unsigned int entries[ENTRIES_PER_NODE];
     __shared__ unsigned int prefix_sum; //Prefix sum gives us next entry size
     __shared__ unsigned int found_idx;
-    __shared__ bool booleans[4]; //booleans[0] == is_last booleans[1] = exact_match idx 3 and 4 are empty but preserve memory alignment.
+    __shared__ unsigned int size;
+    __shared__ unsigned int booleans[4]; //booleans[0] == is_last booleans[1] = exact_match idx 3 and 4 are empty but preserve memory alignment.
 
-    unsigned int updated_idx = start_idx; //Update the index for the while loop
-    unsigned int size = first_size;
+    unsigned int updated_idx = start_idx + 4; //Update the index for the while loop
 
     //Split some of the shared memory onto more comfrotable places
     unsigned short * offests_incremental = (unsigned short *)&offsets[1];
     unsigned int * first_child_offset = &offsets[0];
-    bool * is_last = &booleans[0];
-    bool * exact_match = &booleans[1];
+    unsigned int * is_last = &booleans[0];
+    unsigned int * exact_match = &booleans[1];
+
+    if (i == 0) {
+        size = *(unsigned int *)&global_mem[0];
+    }
 
     //Initialize shared variable
     if (i < 2) {
@@ -41,25 +45,27 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
     while (!*exact_match && !*is_last) {
         //First warp divergence here. We are reading in from global memory
         if (i == 0) {
-            *is_last = (bool)global_mem[updated_idx];
+            *is_last = *(unsigned int *)&global_mem[updated_idx];
+            printf("Is last: %d\n", booleans[0]);
         }
         __syncthreads();
 
-        if (is_last) {
+        if (*is_last) {
             //The number of entries in the bottom most nodes may be smaller than the size
-            if (i < (size - 1)/entry_size) {
-                entries[i] = *(unsigned int *)(&global_mem[updated_idx + 1 + i*sizeof(unsigned int)]);
+            if (i < (size - sizeof(unsigned int))/entry_size) {
+                entries[i] = *(unsigned int *)(&global_mem[updated_idx + sizeof(unsigned int) + i*sizeof(unsigned int)]);
             }
         } else {
-            int num_entries = (size - 1 - sizeof(unsigned int) - sizeof(unsigned short))/(entry_size + sizeof(unsigned short));
+            //Indexes in this case are wrong,redo them
+            int num_entries = (size - sizeof(unsigned int) - sizeof(unsigned int) - sizeof(unsigned short))/(entry_size + sizeof(unsigned short));
             //Load the unsigned int start offset together with the accumulated offsets to avoid warp divergence
             if (i < ((num_entries + 1)/2) + 1) {
-                offsets[i] = *(unsigned int *)(&global_mem[updated_idx + 1 * i*sizeof(unsigned int)]);
+                offsets[i] = *(unsigned int *)(&global_mem[updated_idx + sizeof(unsigned int) * i*sizeof(unsigned int)]);
             }
             __syncthreads();
             //Now load the entries
             if (i < num_entries) {
-                entries[i] = *(unsigned int *)(&global_mem[updated_idx + 1 + (num_entries + 1)*sizeof(unsigned int) + i*sizeof(unsigned int)]);
+                entries[i] = *(unsigned int *)(&global_mem[updated_idx + sizeof(unsigned int) + (num_entries + 1)*sizeof(unsigned int) + i*sizeof(unsigned int)]);
             }
         }
         __syncthreads();
@@ -73,6 +79,7 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
                 }
             }
         } else if (i < ENTRIES_PER_NODE) {
+            printf("Entries i-1: %d, entries i: %d\n", entries[i-1], entries[i]);
             if (key >= entries[i-1] && key < entries[i]){
                 found_idx = i;
                 if (key == entries[i]) {
@@ -102,6 +109,9 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
             
         } else {
             //Locate the rest of the data for the entry (i.e. the payload - backoff, prob, next offset)
+            if (i == 1) {
+                printf("Exact match! Found_idx: %d, key: %d found: %d\n", found_idx, key, entries[found_idx]);
+            }
             break;
         }
     }
@@ -113,4 +123,8 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
 
 void searchWrapper(unsigned char * global_mem, unsigned int start_idx, int first_size, unsigned int key, int grid, int block) {
     gpuSearchBtree<<<grid, block>>>(global_mem, start_idx, first_size, key, 16);
+}
+
+void cudaDevSync() {
+    cudaDeviceSynchronize();
 }

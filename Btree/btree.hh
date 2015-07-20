@@ -223,7 +223,7 @@ void B_tree::trim(){
 }
 
 size_t B_tree::getTotalTreeSize(bool pointer2Index = false) {
-    size_t total_size = 2; //Size of the first node in the beginning of the tree, 2 bytes
+    size_t total_size = sizeof(unsigned int); //Size of the first node in the beginning of the tree, 4 bytes
     std::queue<B_tree_node *> node_queue;
     node_queue.push(root_node);
     while (!node_queue.empty()){
@@ -245,14 +245,11 @@ void B_tree::assign_depth(){
 
 void B_tree::toByteArray(std::vector<unsigned char>& byte_arr, bool pointer2Index = false){
     unsigned int siblings_offset = root_node->getNodeSize(pointer2Index); //Offset because of siblings (including us)
-    unsigned int children_offset = sizeof(unsigned short); //Offset because of siblings' offspring and because of 
+    unsigned int children_offset = sizeof(unsigned int); //Offset because of siblings' offspring and because of 
                                                           // the size of the first node which we will prepend to the byte array
-    unsigned short root_size = root_node->getNodeSize(pointer2Index);
-    unsigned char root_size_bytes[sizeof(root_size)];
-    memcpy(root_size_bytes, (unsigned char *)&root_size, sizeof(root_size));
-    for (unsigned short i = 0; i < sizeof(root_size); i++){
-        byte_arr.push_back(root_size_bytes[i]);
-    }
+    unsigned int root_size = root_node->getNodeSize(pointer2Index);
+    byte_arr.resize(byte_arr.size() + sizeof(root_size));
+    std::memcpy(byte_arr.data() + byte_arr.size() - sizeof(root_size), &root_size, sizeof(root_size));
 
     std::queue<B_tree_node *> processing_queue;
     processing_queue.push(root_node);
@@ -334,7 +331,7 @@ void B_tree_node::toByteArray(std::vector<unsigned char>& byte_arr, unsigned int
     (unsigned int isLast)(first-child-offset (unsigned int))((children)-offsets (unsigned short))(words-in-byte-array)
     the children_offsets parameter will tell us how many elements there are going to be between us and our first child.
     If we don't have children, we just contain the bool and the words array*/
-    unsigned int offset = byte_arr.size(); //Keep track of offset for more efficient copying
+    unsigned int offset = byte_arr.size(); //Keep track of offset in order to do direct memory copies without using .push_back()
     unsigned int last;
     //Set last
     if (children.size() == 0) {
@@ -750,7 +747,7 @@ std::pair<bool, Entry> search_byte_arr(std::vector<unsigned char>& byte_arr, Ent
     //The this_btree_start argument is used if the byte array contains more than one btrees.
 
     //First, find the size of the root node:
-    unsigned short root_size;
+    unsigned int root_size;
     memcpy((unsigned char *)&root_size, byte_arr.data() + this_btree_start, sizeof(root_size));
 
 

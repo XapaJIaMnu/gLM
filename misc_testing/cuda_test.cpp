@@ -34,10 +34,17 @@ int main(int argc, char* argv[]) {
     byte_arr.reserve(pesho->getTotalTreeSize());
     pesho->toByteArray(byte_arr);
 
+    int j = 0;
     unsigned char * gpuByteArray = copyToGPUMemory(byte_arr.data(), byte_arr.size());
     for (std::set<unsigned int>::iterator it = prev_nums.begin(); it != prev_nums.end(); it++){
         unsigned short * first_node_size = reinterpret_cast<unsigned short *>(&byte_arr.data()[0]);
+        //std::cout << "Value at: " << *it << std::endl;
         searchWrapper(gpuByteArray, 0, *first_node_size, *it, 1, 5);
+        cudaDevSync();
+        j++;
+        if (j > 5) {
+            break;
+        }
     }
     freeGPUMemory(gpuByteArray);
 
