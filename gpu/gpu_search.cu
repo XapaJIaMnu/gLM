@@ -38,19 +38,19 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
     }
     __syncthreads();
 
-   // while (!*exact_match && !*is_last) {
+    while (!*exact_match && !*is_last) {
         //First warp divergence here. We are reading in from global memory
         if (i == 0) {
             *is_last = (bool)global_mem[updated_idx];
         }
         __syncthreads();
 
-        //if (is_last) {
+        if (is_last) {
             //The number of entries in the bottom most nodes may be smaller than the size
             if (i < (size - 1)/entry_size) {
                 entries[i] = *(unsigned int *)(&global_mem[updated_idx + 1 + i*sizeof(unsigned int)]);
             }
-        /*} else {
+        } else {
             int num_entries = (size - 1 - sizeof(unsigned int) - sizeof(unsigned short))/(entry_size + sizeof(unsigned short));
             //Load the unsigned int start offset together with the accumulated offsets to avoid warp divergence
             if (i < ((num_entries + 1)/2) + 1) {
@@ -108,7 +108,7 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
 
     //We didn't find anything our btree doesn't contain the key
     
-*/
+
 }
 
 void searchWrapper(unsigned char * global_mem, unsigned int start_idx, int first_size, unsigned int key, int grid, int block) {
