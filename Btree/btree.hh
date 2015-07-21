@@ -699,22 +699,29 @@ void B_tree::produce_graph(const char * filename) {
     graphfile.close();
 }
 
-void B_tree_node_reconstruct(B_tree_node_rec& target, std::vector<unsigned char>& byte_arr, unsigned int start, unsigned short size, bool pointer2Index = false){
+void B_tree_node_reconstruct(B_tree_node_rec& target, std::vector<unsigned char>& byte_arr, unsigned int start, unsigned short size,
+    unsigned short max_btree_node_size, bool pointer2Index = false){
     //Populates the given B_tree_node_reconstruct knowing the byte_arr, the start index and the size of the first item.
     unsigned int last;
-    memcpy((unsigned char *)&last, byte_arr.data() + start, sizeof(last));
-    target.last = last;
+    //memcpy((unsigned char *)&last, byte_arr.data() + start, sizeof(last));
     unsigned short entry_size = getEntrySize(pointer2Index);
+
+    //Determine if the node is last or not. If the node is internal it is always going to be full because of our compression.
+    /*Equation is num_entries = (size - sizeof(unsigned int) - first_child_offset - last_entry_size)/x*(unsigned short (for the remaining entries)
+        + sizeof(word))*/
+    if (((size - sizeof(unsigned int) - sizeof(unsigned int) - sizeof(unsigned short)) / (entry_size + sizeof(unsigned short))) == max_btree_node_size) {
+        last = false;
+        assert(((size - sizeof(unsigned int) - sizeof(unsigned int) - sizeof(unsigned short)) % (entry_size + sizeof(unsigned short))) == 0);
+    } else {
+        last = true;
+        assert(((size - sizeof(unsigned int))%getEntrySize(pointer2Index)) == 0);
+    }
+    target.last = last;
 
     if (!last) {
         //Calculate the indexes knowing the structure of the byte array:
         //(unsigned int isLast)(first-child-offset (unsigned int))((children)-offsets (unsigned short))(words-in-byte-array)
-        unsigned short remaining_elements = size - sizeof(last);
-        /*Equation is num_entries = size - sizeof(unsigned int) - first_child_offset - last_entry_size + x*(unsigned short (for the remaining entries)
-        + sizeof(word))*/
-        unsigned short num_entries = (remaining_elements - sizeof(unsigned int) - sizeof(unsigned short));
-        assert((num_entries % (entry_size + sizeof(unsigned short))) == 0); //Sanity check, checks if we have supplied correct parameters
-        num_entries = num_entries/(entry_size + sizeof(unsigned short));
+        unsigned short num_entries = max_btree_node_size;
 
         //Get the first child offset (in absolute terms, from the start of the array);
         memcpy((unsigned char *)&target.first_child_offset, byte_arr.data() + start + sizeof(last), sizeof(unsigned int));
@@ -732,7 +739,6 @@ void B_tree_node_reconstruct(B_tree_node_rec& target, std::vector<unsigned char>
     } else {
         //We only have entries
         unsigned short num_entries = (size - sizeof(last))/getEntrySize(pointer2Index);
-        assert(((size - sizeof(last))%getEntrySize(pointer2Index)) == 0); //Sanity check, checks if we have supplied correct parameters
 
         unsigned int entries_start_offset = start + sizeof(last);
         target.entries = byteArrayToEntries(byte_arr, num_entries, entries_start_offset, pointer2Index);
@@ -741,7 +747,8 @@ void B_tree_node_reconstruct(B_tree_node_rec& target, std::vector<unsigned char>
 }
 
 template<class EntryOrVocabID>  //Work with both full entries or just the vocabID
-std::pair<bool, Entry> search_byte_arr(std::vector<unsigned char>& byte_arr, EntryOrVocabID key, bool pointer2Index = false, unsigned int this_btree_start = 0) {
+std::pair<bool, Entry> search_byte_arr(std::vector<unsigned char>& byte_arr, EntryOrVocabID key, unsigned short max_btree_node_size,
+    bool pointer2Index = false, unsigned int this_btree_start = 0) {
     //For testing purposes. Tries to find a key in the byte array. This will basically test if
     //our byte array has been stored properly. Uses simple linear search cause I can't be bothered
     //The this_btree_start argument is used if the byte array contains more than one btrees.
@@ -758,7 +765,7 @@ std::pair<bool, Entry> search_byte_arr(std::vector<unsigned char>& byte_arr, Ent
     unsigned int start = sizeof(root_size);
     unsigned short size = root_size;
     while (!found && !temp_node.last) {
-        B_tree_node_reconstruct(temp_node, byte_arr, start + this_btree_start, size, pointer2Index);
+        B_tree_node_reconstruct(temp_node, byte_arr, start + this_btree_start, size, max_btree_node_size, pointer2Index);
 
         for (unsigned short i = 0; i < temp_node.num_entries; i++){
             if (temp_node.entries[i].value == key) {
@@ -794,14 +801,14 @@ std::pair<bool, Entry> search_byte_arr(std::vector<unsigned char>& byte_arr, Ent
 
 }
 
-std::pair<bool, std::string> test_btree_array(std::set<unsigned int>& input, std::vector<unsigned char>& byte_arr) {
+std::pair<bool, std::string> test_btree_array(std::set<unsigned int>& input, std::vector<unsigned char>& byte_arr, unsigned short max_btree_node_size) {
     bool passes = true;
     int counter = 0;
     std::stringstream error;
 
     for (std::set<unsigned int>::iterator it = input.begin(); it != input.end(); it++) {
         Entry key = {*it, nullptr, 0.0, 0.0};
-        std::pair<bool, Entry> res = search_byte_arr(byte_arr, key);
+        std::pair<bool, Entry> res = search_byte_arr(byte_arr, key, max_btree_node_size);
         if (!res.first) {
             passes = false;
             error << "ERROR! " << *it << " Not found at position: " << counter << std::endl;

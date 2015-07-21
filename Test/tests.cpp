@@ -105,7 +105,8 @@ BOOST_AUTO_TEST_CASE(search_test) {
 
 BOOST_AUTO_TEST_CASE(very_big_btree) {
     //init
-    std::pair<B_tree *, std::set<unsigned int> > initialization = init_btree(17, 65000);
+    unsigned short max_btree_node_size = 17;
+    std::pair<B_tree *, std::set<unsigned int> > initialization = init_btree(max_btree_node_size, 65000);
     B_tree * pesho = initialization.first;
     std::set<unsigned int> prev_nums = initialization.second;
 
@@ -126,7 +127,7 @@ BOOST_AUTO_TEST_CASE(very_big_btree) {
     size_t total_array_size = pesho->getTotalTreeSize();
     byte_arr.reserve(total_array_size);
     pesho->toByteArray(byte_arr);
-    std::pair<bool, std::string> test_result_byte = test_btree_array(prev_nums, byte_arr);
+    std::pair<bool, std::string> test_result_byte = test_btree_array(prev_nums, byte_arr, max_btree_node_size);
     BOOST_CHECK_MESSAGE(test_result_byte.first, "Byte array: " << test_result_byte.second);
     BOOST_CHECK_MESSAGE(total_array_size == byte_arr.size(), "Total size mismatch! Expected " << total_array_size << " actual " << byte_arr.size());
 
@@ -135,7 +136,8 @@ BOOST_AUTO_TEST_CASE(very_big_btree) {
 
 BOOST_AUTO_TEST_CASE(very_big_btree_small_node) {
     //init
-    std::pair<B_tree *, std::set<unsigned int> > initialization = init_btree(5, 15000);
+    unsigned short max_btree_node_size = 5;
+    std::pair<B_tree *, std::set<unsigned int> > initialization = init_btree(max_btree_node_size, 15000);
     B_tree * pesho = initialization.first;
     std::set<unsigned int> prev_nums = initialization.second;
 
@@ -153,7 +155,7 @@ BOOST_AUTO_TEST_CASE(very_big_btree_small_node) {
     size_t total_array_size = pesho->getTotalTreeSize();
     byte_arr.reserve(total_array_size);
     pesho->toByteArray(byte_arr);
-    std::pair<bool, std::string> test_result_byte = test_btree_array(prev_nums, byte_arr);
+    std::pair<bool, std::string> test_result_byte = test_btree_array(prev_nums, byte_arr, max_btree_node_size);
     BOOST_CHECK_MESSAGE(test_result_byte.first, "Byte array: " << test_result_byte.second);
     BOOST_CHECK_MESSAGE(total_array_size == byte_arr.size(), "Total size mismatch! Expected " << total_array_size << " actual " << byte_arr.size());
 

@@ -190,13 +190,13 @@ void trieToByteArray(std::vector<unsigned char>& byte_arr, B_tree * root_trie) {
     }
 }
 
-std::pair<Entry, unsigned short> search_byte_array_trie(std::vector<unsigned char>& byte_arr, std::vector<unsigned int> ngrams) {
+std::pair<Entry, unsigned short> search_byte_array_trie(std::vector<unsigned char>& byte_arr, std::vector<unsigned int> ngrams, unsigned short max_btree_node_size) {
     unsigned short level = 0; //We couldn't even find the  first ngram
     unsigned int next_btree_start_idx = 0;
     Entry ret;
 
     for (auto vocabID : ngrams) {
-        std::pair<bool, Entry> result = search_byte_arr(byte_arr, vocabID, true /*pointer2Index*/, next_btree_start_idx);
+        std::pair<bool, Entry> result = search_byte_arr(byte_arr, vocabID, max_btree_node_size, true /*pointer2Index*/, next_btree_start_idx);
         if (result.first) {
             ret = result.second;
             next_btree_start_idx = result.second.offset;
@@ -286,7 +286,7 @@ std::pair<bool, std::string> test_byte_array_trie(const StringType infile, unsig
 
     //Now search for every single entry.
     while (!text2.filefinished && correct) {
-        std::pair<Entry, unsigned short> found = search_byte_array_trie(byte_arr, text2.ngrams);
+        std::pair<Entry, unsigned short> found = search_byte_array_trie(byte_arr, text2.ngrams, btree_node_size);
 
         if (found.second) {
             correct = found.first.prob == text2.score;

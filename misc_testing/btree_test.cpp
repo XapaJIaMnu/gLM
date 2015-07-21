@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
     std::vector<unsigned char> byte_arr;
     byte_arr.reserve(pesho->getTotalTreeSize());
     pesho->toByteArray(byte_arr);
-    std::pair<bool, std::string> test_res2 = test_btree_array(prev_nums, byte_arr);
+    std::pair<bool, std::string> test_res2 = test_btree_array(prev_nums, byte_arr, max_degree);
     if (!test_res2.first) {
         std::cout << test_res.second << std::endl;
     }
