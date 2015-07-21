@@ -313,24 +313,23 @@ void B_tree_node::assign_depth(unsigned int what_is_my_depth){
 
 unsigned short B_tree_node::getNodeSize(bool pointer2Index){
     /*Size is:
-    getEntrySize(pointer2Index)*len(words) + sizeof(unsigned int)(unsigned int serving as bool is_last_level) +
-    len(children)*sizeof(unsigned short) (Size of each child)
-    +  sizeof(unsigned int) (offset to the first child)
-    unless we are at a bottom most node len(children) = len(words) + 1*/
+    getEntrySize(pointer2Index)*len(words) + len(children)*sizeof(unsigned short) (Size of each child)
+    + sizeof(unsigned int) (offset to the first child)
+    unless we are at a bottom most node len(children) = len(words)*/
     unsigned short entry_size = getEntrySize(pointer2Index);
     if (children.size() != 0) {
-        return entry_size*words.size() + sizeof(unsigned int) + sizeof(unsigned short)*children.size() + sizeof(unsigned int);
+        return entry_size*words.size() + sizeof(unsigned short)*children.size() + sizeof(unsigned int);
     } else {
-        return entry_size*words.size() + sizeof(unsigned int);
+        return entry_size*words.size();
     }
     
 }
 
 void B_tree_node::toByteArray(std::vector<unsigned char>& byte_arr, unsigned int children_offset, bool pointer2Index = false){
     /*Appends to the byte_array the contents of this node in the following order:
-    (unsigned int isLast)(first-child-offset (unsigned int))((children)-offsets (unsigned short))(words-in-byte-array)
+    (first-child-offset (unsigned int))((children)-offsets (unsigned short))(words-in-byte-array)
     the children_offsets parameter will tell us how many elements there are going to be between us and our first child.
-    If we don't have children, we just contain the bool and the words array*/
+    If we don't have children, we just contain the words array*/
     unsigned int offset = byte_arr.size(); //Keep track of offset in order to do direct memory copies without using .push_back()
     unsigned int last;
     //Set last
@@ -339,19 +338,13 @@ void B_tree_node::toByteArray(std::vector<unsigned char>& byte_arr, unsigned int
     } else {
         last = false;
     }
-    
-    //Determine how much to change the size of the byte_arr:
-    if (last) {
-        byte_arr.resize(byte_arr.size() + sizeof(last));
-    } else {
-        byte_arr.resize(byte_arr.size() + sizeof(last) + sizeof(unsigned int) + children.size()*sizeof(unsigned short));
-    }
-    
-    std::memcpy(byte_arr.data() + offset, &last, sizeof(last));
-    offset += sizeof(last);
 
     if (!last) {
     //We only need to do this if we actually have children.
+
+        //Determine how much to change the size of the byte_arr:
+        byte_arr.resize(byte_arr.size() + sizeof(unsigned int) + children.size()*sizeof(unsigned short));
+
         //The offset of the first child needs to be stored now. It is  just the children_offset that we have.
         std::memcpy(byte_arr.data() + offset, &children_offset, sizeof(children_offset));
         offset += sizeof(children_offset);
@@ -702,45 +695,44 @@ void B_tree::produce_graph(const char * filename) {
 void B_tree_node_reconstruct(B_tree_node_rec& target, std::vector<unsigned char>& byte_arr, unsigned int start, unsigned short size,
     unsigned short max_btree_node_size, bool pointer2Index = false){
     //Populates the given B_tree_node_reconstruct knowing the byte_arr, the start index and the size of the first item.
-    unsigned int last;
-    //memcpy((unsigned char *)&last, byte_arr.data() + start, sizeof(last));
+    bool last;
     unsigned short entry_size = getEntrySize(pointer2Index);
 
     //Determine if the node is last or not. If the node is internal it is always going to be full because of our compression.
-    /*Equation is num_entries = (size - sizeof(unsigned int) - first_child_offset - last_entry_size)/x*(unsigned short (for the remaining entries)
+    /*Equation is num_entries = (size - first_child_offset - last_entry_size)/x*(unsigned short (for the remaining entries)
         + sizeof(word))*/
-    if (((size - sizeof(unsigned int) - sizeof(unsigned int) - sizeof(unsigned short)) / (entry_size + sizeof(unsigned short))) == max_btree_node_size) {
+    if (((size - sizeof(unsigned int) - sizeof(unsigned short)) / (entry_size + sizeof(unsigned short))) == max_btree_node_size) {
         last = false;
-        assert(((size - sizeof(unsigned int) - sizeof(unsigned int) - sizeof(unsigned short)) % (entry_size + sizeof(unsigned short))) == 0);
+        assert(((size - sizeof(unsigned int) - sizeof(unsigned short)) % (entry_size + sizeof(unsigned short))) == 0);
     } else {
         last = true;
-        assert(((size - sizeof(unsigned int))%getEntrySize(pointer2Index)) == 0);
+        assert((size%getEntrySize(pointer2Index)) == 0);
     }
     target.last = last;
 
     if (!last) {
         //Calculate the indexes knowing the structure of the byte array:
-        //(unsigned int isLast)(first-child-offset (unsigned int))((children)-offsets (unsigned short))(words-in-byte-array)
+        //(first-child-offset (unsigned int))((children)-offsets (unsigned short))(words-in-byte-array)
         unsigned short num_entries = max_btree_node_size;
 
         //Get the first child offset (in absolute terms, from the start of the array);
-        memcpy((unsigned char *)&target.first_child_offset, byte_arr.data() + start + sizeof(last), sizeof(unsigned int));
+        memcpy((unsigned char *)&target.first_child_offset, byte_arr.data() + start, sizeof(unsigned int));
 
         //Get the sizes of each child
         unsigned short * children_sizes = new unsigned short[num_entries+1];
-        memcpy((unsigned char *)children_sizes, byte_arr.data() + start + sizeof(last) + sizeof(unsigned int),
+        memcpy((unsigned char *)children_sizes, byte_arr.data() + start + sizeof(unsigned int),
             sizeof(unsigned short)*(num_entries + 1));
         target.children_sizes = children_sizes;
 
         //Construct the entries vector
-        unsigned int entries_start_offset = start + sizeof(last) + sizeof(unsigned int) + (num_entries+1)*sizeof(unsigned short);
+        unsigned int entries_start_offset = start + sizeof(unsigned int) + (num_entries+1)*sizeof(unsigned short);
         target.entries = byteArrayToEntries(byte_arr, num_entries, entries_start_offset, pointer2Index);
         target.num_entries = num_entries;
     } else {
         //We only have entries
-        unsigned short num_entries = (size - sizeof(last))/getEntrySize(pointer2Index);
+        unsigned short num_entries = size/getEntrySize(pointer2Index);
 
-        unsigned int entries_start_offset = start + sizeof(last);
+        unsigned int entries_start_offset = start;
         target.entries = byteArrayToEntries(byte_arr, num_entries, entries_start_offset, pointer2Index);
         target.num_entries = num_entries;
     }
