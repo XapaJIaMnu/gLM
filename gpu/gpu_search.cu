@@ -27,6 +27,7 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
     unsigned int * first_child_offset = &offsets[0];
     unsigned int * is_last = &booleans[0];
     unsigned int * exact_match = &booleans[1];
+    int num_entries; //Set the number of entries per node depending on whether we are internal or leaf.
 
     if (i == 0) {
         size = *(unsigned int *)&global_mem[0];
@@ -36,36 +37,45 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
     if (i < 2) {
         booleans[i] = false;
     }
-    //@TODO. Fix this to be more efficient. Maybe move it with entries?
-    if (i == 3) {
-        prefix_sum = 0;
-    }
-    __syncthreads();
+    
+    
+    //__syncthreads();
 
     while (!*exact_match && !*is_last) {
         //First warp divergence here. We are reading in from global memory
         if (i == 0) {
-            *is_last = *(unsigned int *)&global_mem[updated_idx];
-            printf("Is last: %d\n", booleans[0]);
+            int cur_node_entries = (size - sizeof(unsigned int) - sizeof(unsigned short))/(entry_size + sizeof(unsigned short));
+            //printf("Cur node entries: %d, size: %d\n", cur_node_entries, size);
+            *is_last = !(ENTRIES_PER_NODE == cur_node_entries);
+            //printf("Is last: %d\n", booleans[0]);
+        }
+        //@TODO. Fix this to be more efficient. Maybe move it with entries?
+        //We need to clear prefix sum every time before we use it.
+        if (i == 3) {
+            prefix_sum = 0;
         }
         __syncthreads();
 
         if (*is_last) {
             //The number of entries in the bottom most nodes may be smaller than the size
-            if (i < (size - sizeof(unsigned int))/entry_size) {
-                entries[i] = *(unsigned int *)(&global_mem[updated_idx + sizeof(unsigned int) + i*sizeof(unsigned int)]);
+            num_entries = size/entry_size;
+            if (i < num_entries) {
+                entries[i] = *(unsigned int *)(&global_mem[updated_idx + i*sizeof(unsigned int)]);
             }
+            //printf("Num entries: %d size: %d\n", num_entries, size);
         } else {
             //Indexes in this case are wrong,redo them
-            int num_entries = (size - sizeof(unsigned int) - sizeof(unsigned int) - sizeof(unsigned short))/(entry_size + sizeof(unsigned short));
+            num_entries = ENTRIES_PER_NODE;
             //Load the unsigned int start offset together with the accumulated offsets to avoid warp divergence
-            if (i < ((num_entries + 1)/2) + 1) {
-                offsets[i] = *(unsigned int *)(&global_mem[updated_idx + sizeof(unsigned int) * i*sizeof(unsigned int)]);
+            if (i < (MAX_NUM_CHILDREN/2) + 1) {
+                offsets[i] = *(unsigned int *)(&global_mem[updated_idx + i*sizeof(unsigned int)]);
+                //printf("NONLAST: Offset i is: %d\n", offsets[i]);
             }
             __syncthreads();
+            //printf("offests_incremental: %d\n", offests_incremental[i]);
             //Now load the entries
             if (i < num_entries) {
-                entries[i] = *(unsigned int *)(&global_mem[updated_idx + sizeof(unsigned int) + (num_entries + 1)*sizeof(unsigned int) + i*sizeof(unsigned int)]);
+                entries[i] = *(unsigned int *)(&global_mem[updated_idx + sizeof(unsigned int) + MAX_NUM_CHILDREN*sizeof(unsigned short) + i*sizeof(unsigned int)]);
             }
         }
         __syncthreads();
@@ -78,23 +88,27 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
                     *exact_match = true;
                 }
             }
-        } else if (i < ENTRIES_PER_NODE) {
-            printf("Entries i-1: %d, entries i: %d\n", entries[i-1], entries[i]);
-            if (key >= entries[i-1] && key < entries[i]){
+        } else if (i < num_entries) {
+            if (key > entries[i-1] && key <= entries[i]){
+                printf("MIDDLE CASE: is_last: %d, num_entries is: %d, entries[i] is: %d found_idx is: %d\n", *is_last, num_entries, entries[i], found_idx);
                 found_idx = i;
                 if (key == entries[i]) {
                     *exact_match = true;
                 }
             }
-        } else if (i == ENTRIES_PER_NODE) {
-            if (key >= entries[i - 1]) {
+        } else if (i == num_entries) {
+            if (key > entries[i]) {
                 found_idx = i;
-                if (key == entries[i - 1]) {
-                    *exact_match = true;
-                }
+                printf("is_last: %d, num_entries is: %d, entries[i] is: %d found_idx is: %d\n", *is_last, num_entries, entries[i], found_idx);
+                //if (key == entries[i - 1]) {
+                //    *exact_match = true;
+                //}
             }
         }
         __syncthreads();
+        if (i == 0) {
+            printf("We have found: %d at position: %d\n", entries[found_idx], found_idx);
+        }
         //We found either an exact match (so we can access next level) or at least an address to next btree level
         if (!*exact_match && !*is_last) {
             //Do a prefix sum on the offsets here
@@ -104,8 +118,9 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
             }
             __syncthreads();
             //As per the cuda memory model at least one write will succeed. since they all write the same we don't care
-            size = prefix_sum;
+            size = (int)offests_incremental[found_idx];
             updated_idx = *first_child_offset + prefix_sum;
+            //printf("updated_idx %d, prefix_sum: %d\n", updated_idx, prefix_sum);
             
         } else {
             //Locate the rest of the data for the entry (i.e. the payload - backoff, prob, next offset)

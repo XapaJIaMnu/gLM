@@ -793,14 +793,15 @@ std::pair<bool, Entry> search_byte_arr(std::vector<unsigned char>& byte_arr, Ent
 
 }
 
-std::pair<bool, std::string> test_btree_array(std::set<unsigned int>& input, std::vector<unsigned char>& byte_arr, unsigned short max_btree_node_size) {
+std::pair<bool, std::string> test_btree_array(std::set<unsigned int>& input, std::vector<unsigned char>& byte_arr,
+    unsigned short max_btree_node_size, bool pointer2Index = false) {
     bool passes = true;
     int counter = 0;
     std::stringstream error;
 
     for (std::set<unsigned int>::iterator it = input.begin(); it != input.end(); it++) {
         Entry key = {*it, nullptr, 0.0, 0.0};
-        std::pair<bool, Entry> res = search_byte_arr(byte_arr, key, max_btree_node_size);
+        std::pair<bool, Entry> res = search_byte_arr(byte_arr, key, max_btree_node_size, pointer2Index);
         if (!res.first) {
             passes = false;
             error << "ERROR! " << *it << " Not found at position: " << counter << std::endl;

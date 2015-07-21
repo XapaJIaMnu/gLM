@@ -32,18 +32,20 @@ int main(int argc, char* argv[]) {
     //produce btree array
     std::vector<unsigned char> byte_arr;
     byte_arr.reserve(pesho->getTotalTreeSize());
-    pesho->toByteArray(byte_arr);
+    pesho->toByteArray(byte_arr, true /*pointer2index*/);
 
-    int j = 0;
+    std::pair<bool, std::string> test_res2 = test_btree_array(prev_nums, byte_arr, max_degree, true);
+    if (!test_res2.first) {
+        std::cout << test_res2.second << std::endl;
+    }
+
     unsigned char * gpuByteArray = copyToGPUMemory(byte_arr.data(), byte_arr.size());
     for (std::set<unsigned int>::iterator it = prev_nums.begin(); it != prev_nums.end(); it++){
         unsigned short * first_node_size = reinterpret_cast<unsigned short *>(&byte_arr.data()[0]);
         //std::cout << "Value at: " << *it << std::endl;
-        searchWrapper(gpuByteArray, 0, *first_node_size, *it, 1, 5);
-        cudaDevSync();
-        j++;
-        if (j > 5) {
-            break;
+        if (*it == 857) {
+            searchWrapper(gpuByteArray, 0, *first_node_size, *it, 1, 5);
+            cudaDevSync();
         }
     }
     freeGPUMemory(gpuByteArray);
