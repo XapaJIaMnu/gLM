@@ -44,6 +44,7 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
     while (!*exact_match && !*is_last) {
         //First warp divergence here. We are reading in from global memory
         if (i == 0) {
+            //@TODO: Replace this with a mod check
             int cur_node_entries = (size - sizeof(unsigned int) - sizeof(unsigned short))/(entry_size + sizeof(unsigned short));
             //printf("Cur node entries: %d, size: %d\n", cur_node_entries, size);
             *is_last = !(ENTRIES_PER_NODE == cur_node_entries);
@@ -61,6 +62,7 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
             num_entries = size/entry_size;
             if (i < num_entries) {
                 entries[i] = *(unsigned int *)(&global_mem[updated_idx + i*sizeof(unsigned int)]);
+                //printf("Entries i: %d, value %d\n", i, entries[i]);
             }
             //printf("Num entries: %d size: %d\n", num_entries, size);
         } else {
@@ -82,7 +84,12 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
 
         //NOW search
         if (i == 0) {
+            //printf("Num entries: %d\n", num_entries);
+            //for (int t = 0; t < num_entries; t++) {
+            //    printf("Num entries %d is: %d\n", t, entries[t]);
+            //}
             if (key <= entries[i]) {
+                //printf("Sanity check: At least one if triggered\n");
                 found_idx = i;
                 if (key == entries[i]) {
                     *exact_match = true;
@@ -90,16 +97,17 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
             }
         } else if (i < num_entries) {
             if (key > entries[i-1] && key <= entries[i]){
-                printf("MIDDLE CASE: is_last: %d, num_entries is: %d, entries[i] is: %d found_idx is: %d\n", *is_last, num_entries, entries[i], found_idx);
+                //printf("MIDDLE CASE: is_last: %d, num_entries is: %d, entries[i] is: %d found_idx is: %d\n", *is_last, num_entries, entries[i], found_idx);
                 found_idx = i;
                 if (key == entries[i]) {
                     *exact_match = true;
                 }
             }
         } else if (i == num_entries) {
-            if (key > entries[i]) {
+            //printf("I is: %d, entries[i-1] is: %d\n", i, entries[i-1]);
+            if (key > entries[i-1]) {
                 found_idx = i;
-                printf("is_last: %d, num_entries is: %d, entries[i] is: %d found_idx is: %d\n", *is_last, num_entries, entries[i], found_idx);
+                //printf("is_last: %d, num_entries is: %d, entries[i-1] is: %d found_idx is: %d\n", *is_last, num_entries, entries[i-1], found_idx);
                 //if (key == entries[i - 1]) {
                 //    *exact_match = true;
                 //}
@@ -107,7 +115,7 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
         }
         __syncthreads();
         if (i == 0) {
-            printf("We have found: %d at position: %d\n", entries[found_idx], found_idx);
+            //printf("We have found: %d at position: %d\n", entries[found_idx], found_idx);
         }
         //We found either an exact match (so we can access next level) or at least an address to next btree level
         if (!*exact_match && !*is_last) {

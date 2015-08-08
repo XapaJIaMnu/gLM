@@ -43,10 +43,10 @@ int main(int argc, char* argv[]) {
     for (std::set<unsigned int>::iterator it = prev_nums.begin(); it != prev_nums.end(); it++){
         unsigned short * first_node_size = reinterpret_cast<unsigned short *>(&byte_arr.data()[0]);
         //std::cout << "Value at: " << *it << std::endl;
-        if (*it == 857) {
-            searchWrapper(gpuByteArray, 0, *first_node_size, *it, 1, 5);
-            cudaDevSync();
-        }
+        //if (*it == 857 || *it == 834) {
+        searchWrapper(gpuByteArray, 0, *first_node_size, *it, 1, 6);
+        cudaDevSync();
+        //}
     }
     freeGPUMemory(gpuByteArray);
 
