@@ -19,7 +19,7 @@ int main(int argc, char* argv[]) {
     while (prev_nums.size() < num_entries) {
         unsigned int new_entry = rand() % (num_entries*10);
         if (prev_nums.count(new_entry) == 0){
-            Entry new_entry_actual = {new_entry, nullptr, 0.5, 0.75};
+            Entry new_entry_actual = {new_entry, nullptr, 0.5 + new_entry, 0.75 + new_entry};
             pesho->insert_entry(new_entry_actual);
             prev_nums.insert(new_entry);
         }
@@ -41,12 +41,8 @@ int main(int argc, char* argv[]) {
 
     unsigned char * gpuByteArray = copyToGPUMemory(byte_arr.data(), byte_arr.size());
     for (std::set<unsigned int>::iterator it = prev_nums.begin(); it != prev_nums.end(); it++){
-        unsigned short * first_node_size = reinterpret_cast<unsigned short *>(&byte_arr.data()[0]);
-        //std::cout << "Value at: " << *it << std::endl;
-        //if (*it == 857 || *it == 834) {
-        searchWrapper(gpuByteArray, 0, *first_node_size, *it, 1, 6);
+        searchWrapper(gpuByteArray, 0, *it);
         cudaDevSync();
-        //}
     }
     freeGPUMemory(gpuByteArray);
 
