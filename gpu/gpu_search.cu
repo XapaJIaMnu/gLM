@@ -123,13 +123,17 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
         } else {
             //Locate the rest of the data for the entry (i.e. the payload - backoff, prob, next offset)
             if (i < 3) {
+                //What we are doing here is reading the correct memory location for our payload. The payload is found
+                //After the offsets and the keys, so we skip them and then we skip to the correct payload using found_idx
                 if (*is_last) {
-                    payload[i] = *(unsigned int *)(&global_mem[updated_idx + num_entries*sizeof(unsigned int) +
-                        found_idx*(sizeof(unsigned int) + sizeof(float) + sizeof(float)) + i*sizeof(unsigned int)]);
+                    payload[i] = *(unsigned int *)(&global_mem[updated_idx + num_entries*sizeof(unsigned int) //Skip the keys
+                        + found_idx*(sizeof(unsigned int) + sizeof(float) + sizeof(float)) //Skip the previous keys' payload
+                            + i*sizeof(unsigned int)]); //Get next_level/prob/backoff
                 } else {
-                    payload[i] = *(unsigned int *)(&global_mem[updated_idx + sizeof(unsigned int) + MAX_NUM_CHILDREN*sizeof(unsigned short) + 
-                        num_entries*sizeof(unsigned int) +
-                            found_idx*(sizeof(unsigned int) + sizeof(float) + sizeof(float)) + i*sizeof(unsigned int)]);
+                    payload[i] = *(unsigned int *)(&global_mem[updated_idx + sizeof(unsigned int) + MAX_NUM_CHILDREN*sizeof(unsigned short) //Skip the keys and offsets
+                        + num_entries*sizeof(unsigned int)
+                            + found_idx*(sizeof(unsigned int) + sizeof(float) + sizeof(float)) //Skip the previous keys' payload
+                                + i*sizeof(unsigned int)]);  //Get next_level/prob/backoff
                 }
             }
             __syncthreads();
