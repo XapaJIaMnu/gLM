@@ -40,11 +40,15 @@ int main(int argc, char* argv[]) {
     }
 
     unsigned char * gpuByteArray = copyToGPUMemory(byte_arr.data(), byte_arr.size());
+    std::vector<unsigned int> keys_cpu;
+
     for (std::set<unsigned int>::iterator it = prev_nums.begin(); it != prev_nums.end(); it++){
-        searchWrapper(gpuByteArray, 0, *it);
-        cudaDevSync();
+        keys_cpu.push_back(*it);
     }
-    searchWrapper(gpuByteArray, 0, 2341); //Test key not found
+    keys_cpu.push_back(2341);
+
+    unsigned int * keys_gpu = copyToGPUMemory(keys_cpu.data(), keys_cpu.size());
+    searchWrapper(gpuByteArray, 0, keys_gpu, keys_cpu.size()); //Test key not found
     cudaDevSync();
     freeGPUMemory(gpuByteArray);
 

@@ -8,6 +8,17 @@ unsigned char * copyToGPUMemory(unsigned char * byte_arr, unsigned int byte_arr_
     return gpu_byte_arr;
 }
 
+unsigned int * copyToGPUMemory(unsigned int * byte_arr, unsigned int byte_arr_size) {
+    unsigned int * gpu_byte_arr;
+    CHECK_CALL(cudaMalloc(&gpu_byte_arr, byte_arr_size*sizeof(unsigned int)));
+    CHECK_CALL(cudaMemcpy(gpu_byte_arr, byte_arr, byte_arr_size*sizeof(unsigned int), cudaMemcpyHostToDevice));
+    return gpu_byte_arr;
+}
+
 void freeGPUMemory(unsigned char * gpu_ptr) {
+    CHECK_CALL(cudaFree(gpu_ptr));
+}
+
+void freeGPUMemory(unsigned int * gpu_ptr) {
     CHECK_CALL(cudaFree(gpu_ptr));
 }

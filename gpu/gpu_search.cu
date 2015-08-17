@@ -11,9 +11,7 @@
 
 //We want to copy a whole BTree node to shared memory. We will know the size in advance, we need to distribute the copying between
 //our threads. We might end up copying more than we need, but that is fine, as long as we avoid warp divergence.
-__global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_idx, unsigned int key){
-    //We don't care about blcokDim.x because we only have a single block do the searching
-    int i = blockIdx.x + threadIdx.x;
+__global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_idx, unsigned int * keys){
 
     __shared__ unsigned int offsets[MAX_NUM_CHILDREN/2 +1]; //Reads in the first child offset + the shorts
     __shared__ unsigned int entries[ENTRIES_PER_NODE];
@@ -22,6 +20,11 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
     __shared__ unsigned int size;
     __shared__ unsigned int booleans[2]; //booleans[0] == is_last booleans[1] = exact_match
     __shared__ unsigned int payload[3]; //After we find the correct entry, load the payload here
+
+    //Maybe we need to issue shared memory here to optimize it
+    unsigned int key = keys[blockIdx.x];
+    int i = threadIdx.x;
+    __syncthreads();
 
     unsigned int updated_idx = start_idx + 4; //Update the index for the while loop
 
@@ -148,22 +151,16 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
             __syncthreads();
             
             if (i == 1) {
-                printf("Exact match! Found_idx: %d, key: %d found: %d\n", found_idx, key, entries[found_idx]);
-                printf("Next level: %d, prob %f, backoff %f\n", *next_level, *prob, *backoff);
+                printf("Exact match! Found_idx: %d, key: %d found: %d\nNext level: %d, prob %f, backoff %f\n", found_idx, key, entries[found_idx], *next_level, *prob, *backoff);
             }
             break;
         }
     }
-
-    //We didn't find anything our btree doesn't contain the key
-    
-
 }
 
-
-void searchWrapper(unsigned char * global_mem, unsigned int start_idx, unsigned int key) {
+void searchWrapper(unsigned char * global_mem, unsigned int start_idx, unsigned int * keys, unsigned int num_keys) {
     //Block size should always be MAX_NUM_CHILDREN for best efficiency when searching the btree
-    gpuSearchBtree<<<1, MAX_NUM_CHILDREN>>>(global_mem, start_idx, key);
+    gpuSearchBtree<<<num_keys, MAX_NUM_CHILDREN>>>(global_mem, start_idx, keys);
 }
 
 /* Can't compile easily with cmake. Maybe there's a better way
