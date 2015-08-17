@@ -44,6 +44,8 @@ int main(int argc, char* argv[]) {
         searchWrapper(gpuByteArray, 0, *it);
         cudaDevSync();
     }
+    searchWrapper(gpuByteArray, 0, 2341); //Test key not found
+    cudaDevSync();
     freeGPUMemory(gpuByteArray);
 
 }

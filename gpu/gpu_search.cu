@@ -20,7 +20,7 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
     __shared__ unsigned int prefix_sum; //Prefix sum gives us next node size
     __shared__ unsigned int found_idx;
     __shared__ unsigned int size;
-    __shared__ unsigned int booleans[2]; //booleans[0] == is_last booleans[1] = exact_match idx 3 and 4 are empty but preserve memory alignment.
+    __shared__ unsigned int booleans[2]; //booleans[0] == is_last booleans[1] = exact_match
     __shared__ unsigned int payload[3]; //After we find the correct entry, load the payload here
 
     unsigned int updated_idx = start_idx + 4; //Update the index for the while loop
@@ -120,6 +120,15 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
             size = (int)offests_incremental[found_idx];
             updated_idx = *first_child_offset + prefix_sum;
             
+        } else if (*is_last && !*exact_match) {
+            //In this case we didn't find the key that we were looking for
+            //@TODO return a invalid offset when we didn't find anything (mb 0)?
+            if (i == 0) {
+            printf("Key not found! Key was %d\n", key);               
+            }
+
+            break;
+
         } else {
             //Locate the rest of the data for the entry (i.e. the payload - backoff, prob, next offset)
             if (i < 3) {
@@ -130,8 +139,8 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
                         + found_idx*(sizeof(unsigned int) + sizeof(float) + sizeof(float)) //Skip the previous keys' payload
                             + i*sizeof(unsigned int)]); //Get next_level/prob/backoff
                 } else {
-                    payload[i] = *(unsigned int *)(&global_mem[updated_idx + sizeof(unsigned int) + MAX_NUM_CHILDREN*sizeof(unsigned short) //Skip the keys and offsets
-                        + num_entries*sizeof(unsigned int)
+                    payload[i] = *(unsigned int *)(&global_mem[updated_idx + sizeof(unsigned int) + MAX_NUM_CHILDREN*sizeof(unsigned short) //Skip the offsets and first offset
+                        + num_entries*sizeof(unsigned int) //Skip the keys
                             + found_idx*(sizeof(unsigned int) + sizeof(float) + sizeof(float)) //Skip the previous keys' payload
                                 + i*sizeof(unsigned int)]);  //Get next_level/prob/backoff
                 }
