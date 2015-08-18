@@ -158,7 +158,16 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
 
 void searchWrapper(unsigned char * global_mem, unsigned int start_idx, unsigned int * keys, unsigned int num_keys) {
     //Block size should always be MAX_NUM_CHILDREN for best efficiency when searching the btree
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    cudaEventRecord(start);
     gpuSearchBtree<<<num_keys, MAX_NUM_CHILDREN>>>(global_mem, start_idx, keys);
+    cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
+    float milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
+    printf("Searched %d keys in: %f\n", num_keys, milliseconds);
 }
 
 /* Can't compile easily with cmake. Maybe there's a better way
