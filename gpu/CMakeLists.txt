@@ -1,4 +1,9 @@
 find_package(CUDA REQUIRED) # For when we add CUDA files
-set(CUDA_NVCC_FLAGS "-arch=compute_52; -code=sm_52; -lcudart")
+if (DEFINED BUILDTYPE)
+    set(CUDA_NVCC_FLAGS "-arch=compute_52; -code=sm_52; -lcudart; -O3")
+else()
+    set(CUDA_NVCC_FLAGS "-arch=compute_52; -code=sm_52; -lcudart; -g; -G")
+    message("Building a debug gpu build.")
+endif()
 cuda_add_library(memory_management memory_management.cu)
 cuda_add_library(gpu_search gpu_search.cu)

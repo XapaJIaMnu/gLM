@@ -4,8 +4,8 @@
 
 int main(int argc, char* argv[]) {
     //Defaults
-    int max_degree = 5;
-    unsigned int num_entries = 125;
+    int max_degree = 255;
+    unsigned int num_entries = 1250000;
     const char * filename = "/tmp/graph_compressed.dot";
 
     if (argc == 4) {

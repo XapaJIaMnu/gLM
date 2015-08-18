@@ -2,7 +2,7 @@
 //#include "entry_structs.hh"
 #include <cuda_runtime.h>
 
-#define MAX_NUM_CHILDREN 6
+#define MAX_NUM_CHILDREN 256
 #define ENTRIES_PER_NODE (MAX_NUM_CHILDREN - 1)
 #define ENTRY_SIZE (sizeof(unsigned int) + sizeof(unsigned int) + 2*sizeof(float)) //Same as the getEntrySize(true)
 //Assume working with 256 thread DON'T RELY ENTIRERLY ON THOSE! Size may be smaller. need a parameter.
@@ -17,7 +17,6 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
     __shared__ unsigned int entries[ENTRIES_PER_NODE];
     __shared__ unsigned int prefix_sum; //Prefix sum gives us next node size
     __shared__ unsigned int found_idx;
-    __shared__ unsigned int size;
     __shared__ unsigned int booleans[2]; //booleans[0] == is_last booleans[1] = exact_match
     __shared__ unsigned int payload[3]; //After we find the correct entry, load the payload here
 
@@ -27,6 +26,7 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
     __syncthreads();
 
     unsigned int updated_idx = start_idx + 4; //Update the index for the while loop
+    unsigned int size; //The size of the current node to process. Move to register to avoid sychronization
 
     //Split some of the shared memory onto more comfrotable places
     unsigned short * offests_incremental = (unsigned short *)&offsets[1];
@@ -41,29 +41,26 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
     
     int num_entries; //Set the number of entries per node depending on whether we are internal or leaf.
 
-    if (i == 0) {
-        size = *(unsigned int *)&global_mem[0];
-    }
+    size = *(unsigned int *)&global_mem[0]; //Is it better to do this in shared memory
 
     //Initialize shared variable
     if (i < 2) {
         booleans[i] = false;
     }
+    __syncthreads();
 
-
-    while (!*exact_match && !*is_last) {
+    while (!*exact_match) {
         //First warp divergence here. We are reading in from global memory
         if (i == 0) {
             //@TODO: Replace this with a mod check
             int cur_node_entries = (size - sizeof(unsigned int) - sizeof(unsigned short))/(ENTRY_SIZE + sizeof(unsigned short));
             *is_last = !(ENTRIES_PER_NODE == cur_node_entries);
+            //@TODO. Fix this to be more efficient. Maybe move it with entries?
+            //As per cuda memory model at least one write will succeed. We are clearing this value
+            //So it doesn't interfere with the future values
+            prefix_sum = 0;
         }
         __syncthreads();
-
-        //@TODO. Fix this to be more efficient. Maybe move it with entries?
-        //As per cuda memory model at least one write will succeed. We are clearing this value
-        //So it doesn't interfere with the future values
-        prefix_sum = 0;
 
 
         if (*is_last) {
@@ -122,13 +119,14 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
             //As per the cuda memory model at least one write will succeed. since they all write the same we don't care
             size = (int)offests_incremental[found_idx];
             updated_idx = *first_child_offset + prefix_sum;
+            __syncthreads(); //Data hazard fix on size
             
         } else if (*is_last && !*exact_match) {
             //In this case we didn't find the key that we were looking for
             //@TODO return a invalid offset when we didn't find anything (mb 0)?
-            if (i == 0) {
-            printf("Key not found! Key was %d\n", key);               
-            }
+            //if (i == 0) {
+            //    printf("Key not found! Key was %d\n", key);               
+            //}
 
             break;
 
@@ -150,9 +148,9 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_id
             }
             __syncthreads();
             
-            if (i == 1) {
-                printf("Exact match! Found_idx: %d, key: %d found: %d\nNext level: %d, prob %f, backoff %f\n", found_idx, key, entries[found_idx], *next_level, *prob, *backoff);
-            }
+            //if (i == 1) {
+            //    printf("Exact match! Found_idx: %d, key: %d found: %d\nNext level: %d, prob %f, backoff %f\n", found_idx, key, entries[found_idx], *next_level, *prob, *backoff);
+            //}
             break;
         }
     }
