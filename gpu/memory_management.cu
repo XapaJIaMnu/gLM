@@ -15,6 +15,14 @@ unsigned int * copyToGPUMemory(unsigned int * byte_arr, unsigned int byte_arr_si
     return gpu_byte_arr;
 }
 
+void allocateGPUMem(size_t size, unsigned int ** gpu_mem) {
+    CHECK_CALL(cudaMalloc(gpu_mem, size*sizeof(unsigned int)));
+}
+
+void copyToHostMemory(unsigned int * gpu_mem, unsigned int * cpu_mem, size_t size) {
+    CHECK_CALL(cudaMemcpy(cpu_mem, gpu_mem, size*sizeof(unsigned int), cudaMemcpyDeviceToHost));
+}
+
 void freeGPUMemory(unsigned char * gpu_ptr) {
     CHECK_CALL(cudaFree(gpu_ptr));
 }

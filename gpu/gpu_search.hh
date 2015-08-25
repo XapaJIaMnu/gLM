@@ -4,6 +4,6 @@
 //__global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int start_idx, int size, unsigned int key);
 
 //Wrapper to call on the gpu
-void searchWrapper(unsigned char * global_mem, unsigned int start_idx, unsigned int * keys, unsigned int num_keys);
+void searchWrapper(unsigned char * global_mem, unsigned int * keys, unsigned int num_keys, unsigned int * results);
 
 void cudaDevSync();

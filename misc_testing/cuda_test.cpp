@@ -10,8 +10,8 @@ int main(int argc, char* argv[]) {
     start = std::chrono::system_clock::now();
 
     //Defaults
-    int max_degree = 5;
-    unsigned int num_entries = 125;
+    int max_degree = 255;
+    unsigned int num_entries = 12500000;
     const char * filename = "/tmp/graph_compressed.dot";
 
     if (argc == 4) {
@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
     B_tree * pesho = new B_tree(max_degree);
     std::set<unsigned int> prev_nums; //Used to see if we have duplicating nums
     while (prev_nums.size() < num_entries) {
-        unsigned int new_entry = rand() % (num_entries*10);
+        unsigned int new_entry = 1 + (rand() % (num_entries*10));
         if (prev_nums.count(new_entry) == 0){
             Entry new_entry_actual = {new_entry, nullptr, 0.5f + new_entry, 0.75f + new_entry};
             pesho->insert_entry(new_entry_actual);
@@ -60,11 +60,14 @@ int main(int argc, char* argv[]) {
     }
     keys_cpu.push_back(2341);
 
+    unsigned int * results;
+    allocateGPUMem(num_entries*3, &results); //Store key + backoff + prob
+
     memcpyKeysStart = std::chrono::system_clock::now();
     unsigned int * keys_gpu = copyToGPUMemory(keys_cpu.data(), keys_cpu.size());
     memcpyKeysEnd = std::chrono::system_clock::now();
 
-    searchWrapper(gpuByteArray, 0, keys_gpu, keys_cpu.size()); //Test key not found
+    searchWrapper(gpuByteArray, keys_gpu, keys_cpu.size(), results); //Test key not found
     cudaDevSync();
     kernel = std::chrono::system_clock::now();
 
@@ -72,6 +75,24 @@ int main(int argc, char* argv[]) {
     freeGPUMemory(keys_gpu);
 
     memFree = std::chrono::system_clock::now();
+
+    unsigned int * results_cpu = new unsigned int[num_entries*3];
+    copyToHostMemory(results, results_cpu, num_entries*3); //copy back to the host the results
+    freeGPUMemory(results);
+
+    for (unsigned int i = 0; i < num_entries; i++) {
+        //bool key_correct = results_cpu[i*3] == keys_cpu[i]; //This is next lvl 
+        float prob = *(float *)&results_cpu[i*3+1];
+        float backoff = *(float *)&results_cpu[i*3+2];
+
+        bool prob_correct = prob == (0.5f + keys_cpu[i]);
+        bool backoff_correct = backoff == (0.75f + keys_cpu[i]);
+
+        if (!(prob_correct && backoff_correct)) {
+            std::cout << "Something went wrong at i: " << i << "! Expected key: " << keys_cpu[i] << " prob: " << 0.5f + keys_cpu[i] << " backoff: " << 0.75f + keys_cpu[i]
+                << " but got key: " << results_cpu[i*3] << " prob: " << prob << " backoff " << backoff << std::endl;
+        }
+    }
 
     std::chrono::duration<double> diff = all_btree_done - start;
     std::cout << "Btree built for: " << diff.count() << " seconds" << std::endl;
