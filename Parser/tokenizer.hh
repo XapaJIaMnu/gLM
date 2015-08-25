@@ -54,7 +54,7 @@ ArpaReader::ArpaReader(const StringType filename) {
         std::exit(EXIT_FAILURE);
     }
 
-    vocabcounter = 0;
+    vocabcounter = 1;
     state = 0;
 
     //Read only the maximum ngrams for now, later on more things

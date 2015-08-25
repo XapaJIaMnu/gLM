@@ -10,8 +10,8 @@ int main(int argc, char* argv[]) {
     start = std::chrono::system_clock::now();
 
     //Defaults
-    int max_degree = 255;
-    unsigned int num_entries = 1250000;
+    int max_degree = 5;
+    unsigned int num_entries = 125;
     const char * filename = "/tmp/graph_compressed.dot";
 
     if (argc == 4) {
