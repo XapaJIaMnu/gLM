@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
     B_tree * pesho = new B_tree(max_degree);
     std::set<unsigned int> prev_nums; //Used to see if we have duplicating nums
     while (prev_nums.size() < num_entries) {
-        unsigned int new_entry = rand() % (num_entries*10);
+        unsigned int new_entry = 1 + (rand() % (num_entries*10));
         if (prev_nums.count(new_entry) == 0){
             Entry new_entry_actual = {new_entry, nullptr, 0.0, 0.0};
             pesho->insert_entry(new_entry_actual);
