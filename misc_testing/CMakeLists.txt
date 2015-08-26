@@ -7,3 +7,9 @@ target_link_libraries(cuda_test
                       memory_management
                       gpu_search
                       )
+
+add_executable(gpu_trie_test gpu_trie_test.cpp)
+target_link_libraries(gpu_trie_test
+                      memory_management
+                      gpu_search
+                      )

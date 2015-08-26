@@ -45,7 +45,7 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
     //Set the start index
     unsigned int current_btree_start = 0;
     unsigned int current_ngram = 0;
-    unsigned int key = keys_shared[0];
+    unsigned int key = keys_shared[current_ngram];
     while (key != 0 && current_ngram < MAX_NGRAM) {
         current_ngram++;
         unsigned int updated_idx = current_btree_start + 4; //Update the index for the while loop
@@ -157,8 +157,13 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
                     }
                     results[blockIdx.x*3 + i] = payload[i]; //Copy the results of the search to an array which will later be checked
                 }
-                if (current_ngram < MAX_NGRAM) {
+
+                key = keys_shared[current_ngram];
+                if (current_ngram < MAX_NGRAM && key != 0) {
                     current_btree_start = *next_level;
+                    if (i == 0) {
+                        printf("Current_btree_start: %d current_ngram: %d\n", *next_level, current_ngram);
+                    }
                 }
                 __syncthreads();
                 

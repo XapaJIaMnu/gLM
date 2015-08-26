@@ -94,6 +94,8 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    delete[] results_cpu;
+
     std::chrono::duration<double> diff = all_btree_done - start;
     std::cout << "Btree built for: " << diff.count() << " seconds" << std::endl;
     
