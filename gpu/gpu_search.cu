@@ -5,7 +5,7 @@
 #define MAX_NUM_CHILDREN 256
 #define ENTRIES_PER_NODE (MAX_NUM_CHILDREN - 1)
 #define ENTRY_SIZE (sizeof(unsigned int) + sizeof(unsigned int) + 2*sizeof(float)) //Same as the getEntrySize(true)
-#define MAX_NGRAM 1
+#define MAX_NGRAM 5
 //Assume working with 256 thread DON'T RELY ENTIRERLY ON THOSE! Size may be smaller. need a parameter.
 //Requires two more threads then num of entries per node
 
@@ -160,12 +160,12 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
 
                 key = keys_shared[current_ngram];
                 if (current_ngram < MAX_NGRAM && key != 0) {
+                    __syncthreads();
                     current_btree_start = *next_level;
-                    if (i == 0) {
-                        printf("Current_btree_start: %d current_ngram: %d\n", *next_level, current_ngram);
-                    }
+                    //if (i == 0) {
+                    //    printf("Current_btree_start: %d current_ngram: %d\n", *next_level, current_ngram);
+                    //}
                 }
-                __syncthreads();
                 
                 //if (i == 1) {
                 //    printf("Exact match! Found_idx: %d, key: %d found: %d\nNext level: %d, prob %f, backoff %f\n", found_idx, key, entries[found_idx], *next_level, *prob, *backoff);

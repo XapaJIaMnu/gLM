@@ -14,14 +14,14 @@ int main(int argc, char* argv[]) {
     processed_line text2 = pesho2.readline();
 
     unsigned char * gpuByteArray = copyToGPUMemory(lm.trieByteArray.data(), lm.trieByteArray.size());
-    std::cout << "Byte array size: " << lm.trieByteArray.size() << std::endl;
 
     std::vector<unsigned int> keys_to_query;
     unsigned int num_keys = 0; //How many ngrams are we going to query
 
     while (!text2.filefinished) {
         //Inefficient reallocation of keys_to_query. Should be done better
-        for (int i = 0; i < (max_ngram_order - text2.ngrams.size()); i++) {
+        int num_padded =  max_ngram_order - text2.ngrams.size();
+        for (int i = 0; i < num_padded; i++) {
             text2.ngrams.push_back(0); //Extend ngrams to max num ngrams if they are of lower order
         }
         //keys_to_query.resize(keys_to_query.size() + text2.ngrams.size()); //@TODO redo when not sleep deprived
@@ -43,6 +43,10 @@ int main(int argc, char* argv[]) {
     //Copy back to host
     unsigned int * results_cpu = new unsigned int[num_keys*3];
     copyToHostMemory(results, results_cpu, num_keys*3);
+
+    //for (unsigned int i = 0; i < num_keys; i++) {
+    //    std::cout << results_cpu[i*3] << " " << *(float *)&results_cpu[i*3 + 1] << " " << *(float *)&results_cpu[i*3 + 2] << std::endl;
+    //}
 
     freeGPUMemory(gpuByteArray);
     freeGPUMemory(gpuKeys);
