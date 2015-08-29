@@ -121,23 +121,25 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
                 //Do a prefix sum on the offsets here
                 //@TODO optimize later. Do a proper prefix sum rather than atomic add
                 if (i < found_idx) {
-                   atomicAdd(&prefix_sum, (int)offests_incremental[i]); 
+                   atomicAdd(&prefix_sum, (unsigned int)offests_incremental[i]);
                 }
                 __syncthreads(); //This is not necessary? It is necssary because the threads that don't take the if
                 //path may write to the updated idx
                 //As per the cuda memory model at least one write will succeed. since they all write the same we don't care
-                size = (int)offests_incremental[found_idx];
+                size = (unsigned int)offests_incremental[found_idx]; //@TODO This should be unsigned int cast, otherwise we convert to module1 in hardware
                 updated_idx = *first_child_offset + prefix_sum;
                 __syncthreads(); //Data hazard fix on size
                 
             } else if (*is_last && !*exact_match) {
                 //In this case we didn't find the key that we were looking for
+                //@TODO implement backoff here
                 //@TODO return a invalid offset when we didn't find anything (mb 0)?
                 if (i == 0) {
                     //printf("Key not found! Key was %d\n", key);
                     results[blockIdx.x*3] = 0; //Indicate that we didn't find the key that we were looking for
                 }
-
+                key = 0; //This is necessary so we can gracefully exit rather than trying to access additional keys
+                //printf("We are here!\n");
                 break;
 
             } else {
@@ -159,6 +161,7 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
                 }
 
                 key = keys_shared[current_ngram];
+
                 if (current_ngram < MAX_NGRAM && key != 0) {
                     __syncthreads();
                     current_btree_start = *next_level;
