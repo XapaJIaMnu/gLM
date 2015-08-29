@@ -1,7 +1,8 @@
-#include "tokenizer.hh"
+//#include "tokenizer.hh"
 #include "serialization.hh"
 #include "memory_management.hh"
 #include "gpu_search.hh"
+#include "trie.hh"
 
 template<class StringType>
 void prepareSearchVectors(std::vector<unsigned int>& keys, std::vector<float>& check_against, unsigned short max_ngram_order, unsigned int& total_num_keys, StringType arpafile) {
@@ -26,9 +27,9 @@ void prepareSearchVectors(std::vector<unsigned int>& keys, std::vector<float>& c
 
         num_keys++;
         text2 = pesho2.readline();
-        if (num_keys > 500000) {
-            break;
-        }
+        //if (num_keys > 550000) {
+        //    break;
+        //}
     }
 
     total_num_keys = num_keys;
@@ -42,6 +43,36 @@ void testGPUsearch(StringType arpafile, StringType pathTobinary) {
     //unsigned int max_btree_node_size = lm.metadata.btree_node_size; Will use when we move away from hardcoding it
     unsigned short max_ngram_order = lm.metadata.max_ngram_order;
 
+    /*/Check on cpu first:
+    std::cout << "Start cpu sanity check:" << std::endl;
+    ArpaReader pesho2(arpafile);
+    processed_line text2 = pesho2.readline();
+    bool correct = true;
+    std::stringstream error;
+
+
+    while (!text2.filefinished && correct) {
+        std::pair<Entry, unsigned short> found = search_byte_array_trie(lm.trieByteArray, text2.ngrams, lm.metadata.btree_node_size);
+
+        if (found.second) {
+            correct = found.first.prob == text2.score;
+            correct = correct && (found.first.backoff == text2.backoff);
+        } else {
+            error << "Ngram not found! " << text2 << std::endl;
+            correct = false;
+            break;
+        }
+        if (!correct) {
+            error << text2 << std::endl;
+            error << "Ngram size is: " << text2.ngram_size << std::endl;
+            error << "There has been an error! Score: Expected " << text2.score
+            << " Got: " << found.first.prob << " Backoff expected: " << text2.backoff << " Got: " << found.first.backoff << std::endl;
+            break;
+        }
+        text2 = pesho2.readline();
+    }
+    std::cout << "Cpu check done!" << std::endl << error.str() << std::endl;
+    *///cpu check done
     //Prepare for search
 
     std::vector<unsigned int> keys;
