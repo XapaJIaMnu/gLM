@@ -115,6 +115,9 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
                 }
             }
             __syncthreads();
+            //if (i == 0) {
+            //    printf("Key %d, index %d, result_there %d num_entries %d\n", key, found_idx, entries[found_idx], num_entries);
+            //}
 
             //We found either an exact match (so we can access next level) or at least an address to next btree level
             if (!*exact_match && !*is_last) {
@@ -127,7 +130,9 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
                 //path may write to the updated idx
                 //As per the cuda memory model at least one write will succeed. since they all write the same we don't care
                 size = (unsigned int)offests_incremental[found_idx]; //@TODO This should be unsigned int cast, otherwise we convert to module1 in hardware
-                updated_idx = *first_child_offset + prefix_sum;
+                updated_idx = *first_child_offset + prefix_sum + current_btree_start; //*first_child_offset + prefix_sum only gives score since beginning
+                                                                                    // of this btree. If we want index from the byte_arr start we need to add
+                                                                                    // current_btree_start
                 __syncthreads(); //Data hazard fix on size
                 
             } else if (*is_last && !*exact_match) {
