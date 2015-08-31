@@ -2,7 +2,7 @@
 //#include "entry_structs.hh"
 #include <cuda_runtime.h>
 
-#define MAX_NUM_CHILDREN 256
+#define MAX_NUM_CHILDREN 128
 #define ENTRIES_PER_NODE (MAX_NUM_CHILDREN - 1)
 #define ENTRY_SIZE (sizeof(unsigned int) + sizeof(unsigned int) + 2*sizeof(float)) //Same as the getEntrySize(true)
 #define MAX_NGRAM 5
@@ -41,6 +41,11 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
     float * backoff = (float *)&payload[2];
 
     int num_entries; //Set the number of entries per node depending on whether we are internal or leaf.
+
+    //Backoof variables
+    unsigned int backing_off = 0; //To check whether we are backing off
+    float accumulated_score = 1;
+    bool get_backoff = false; //Are we looking to extract backoff or prob from our ngram
 
     //Set the start index
     unsigned int current_btree_start = 0;
@@ -139,11 +144,12 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
                 //In this case we didn't find the key that we were looking for
                 //@TODO implement backoff here
                 //@TODO return a invalid offset when we didn't find anything (mb 0)?
-                if (i == 0) {
-                    //printf("Key not found! Key was %d\n", key);
-                    results[blockIdx.x*3] = 0; //Indicate that we didn't find the key that we were looking for
-                }
-                key = 0; //This is necessary so we can gracefully exit rather than trying to access additional keys
+                //printf("Key not found! Key was %d\n", key);
+                accumulated_score *= *prob; //Multiply by the probability of n-1 gram
+                backing_off++; //Start from further ahead in the backoff
+                current_ngram = backing_off; //Start trie lookup further ahead
+                key = keys_shared[current_ngram]; //This is necessary so we can gracefully exit rather than trying to access additional keys
+                get_backoff = true;
                 //printf("We are here!\n");
                 break;
 
@@ -170,14 +176,16 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
                 if (current_ngram < MAX_NGRAM && key != 0) {
                     __syncthreads();
                     current_btree_start = *next_level;
-                    //if (i == 0) {
-                    //    printf("Current_btree_start: %d current_ngram: %d\n", *next_level, current_ngram);
-                    //}
+                } else {
+                    if (i == 0) {
+                        if (get_backoff) {
+                            results[blockIdx.x] = *backoff*accumulated_score; //@TODO enable that
+                        } else {
+                            results[blockIdx.x] = *prob*accumulated_score; //@TODO enable that
+                        }
+                    }
                 }
-                
-                //if (i == 1) {
-                //    printf("Exact match! Found_idx: %d, key: %d found: %d\nNext level: %d, prob %f, backoff %f\n", found_idx, key, entries[found_idx], *next_level, *prob, *backoff);
-                //}
+
                 break;
             }
         }
