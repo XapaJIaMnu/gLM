@@ -150,6 +150,7 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
                 current_ngram = backing_off; //Start trie lookup further ahead
                 key = keys_shared[current_ngram]; //This is necessary so we can gracefully exit rather than trying to access additional keys
                 get_backoff = true;
+                current_btree_start = 0; //Go back to the root of the tries
                 //printf("We are here!\n");
                 break;
 
