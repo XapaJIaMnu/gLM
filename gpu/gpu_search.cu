@@ -54,8 +54,8 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
     while (key != 0 && current_ngram < MAX_NGRAM) {
         current_ngram++;
         unsigned int updated_idx = current_btree_start + 4; //Update the index for the while loop
-        unsigned int size = *(unsigned int *)&global_mem[current_btree_start];; //The size of the current node to process. 
-        //Move to register to avoid sychronizationIs it better to do this in shared memory
+        unsigned int size = *(unsigned int *)&global_mem[current_btree_start];; //The size of the current node to process. @TODO This causes misaligned memory
+        //Move to register to avoid sychronizationIs it better to do this in shared memory                                 access when using cuda-memcheck. Why?
 
         //Initialize shared variable
         if (i < 2) {
@@ -134,7 +134,7 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
                 __syncthreads(); //This is not necessary? It is necssary because the threads that don't take the if
                 //path may write to the updated idx
                 //As per the cuda memory model at least one write will succeed. since they all write the same we don't care
-                size = (unsigned int)offests_incremental[found_idx]; //@TODO This should be unsigned int cast, otherwise we convert to module1 in hardware
+                size = (unsigned int)offests_incremental[found_idx];
                 updated_idx = *first_child_offset + prefix_sum + current_btree_start; //*first_child_offset + prefix_sum only gives score since beginning
                                                                                     // of this btree. If we want index from the byte_arr start we need to add
                                                                                     // current_btree_start
@@ -179,9 +179,9 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
                 } else {
                     if (i == 0) {
                         if (get_backoff) {
-                            results[blockIdx.x] = *backoff*accumulated_score; //@TODO enable that
+                            results[blockIdx.x] = *backoff*accumulated_score;
                         } else {
-                            results[blockIdx.x] = *prob*accumulated_score; //@TODO enable that
+                            results[blockIdx.x] = *prob*accumulated_score;
                         }
                     }
                 }
