@@ -142,9 +142,9 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
                 
             } else if (*is_last && !*exact_match) {
                 //In this case we didn't find the key that we were looking for
-                //@TODO implement backoff here
-                //@TODO return a invalid offset when we didn't find anything (mb 0)?
-                //printf("Key not found! Key was %d\n", key);
+                //What we should do is get the probability of the last node that we found
+                //The last node that we found's probability should be in shared memory
+
                 accumulated_score *= *prob; //Multiply by the probability of n-1 gram
                 backing_off++; //Start from further ahead in the backoff
                 current_ngram = backing_off; //Start trie lookup further ahead

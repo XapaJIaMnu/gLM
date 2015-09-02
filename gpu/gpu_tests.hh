@@ -5,11 +5,7 @@
 #include <sstream>
 
 template<class StringType>
-std::pair<bool, std::string> testQueryNgrams(StringType arpafile) {
-    //Create the models
-    LM lm;
-    createTrieArray(arpafile, 127, lm); //@Todo make this somewhat not so hardcoded
-    std::cout << "Finished create Btree trie." << std::endl;
+std::pair<bool, std::string> testQueryNgrams(LM& lm, unsigned char * gpuByteArray, StringType arpafile) {
     //Create check against things:
     ArpaReader pesho2(arpafile);
     processed_line text2 = pesho2.readline();
@@ -36,8 +32,6 @@ std::pair<bool, std::string> testQueryNgrams(StringType arpafile) {
         text2 = pesho2.readline();
     }
 
-    unsigned char * gpuByteArray = copyToGPUMemory(lm.trieByteArray.data(), lm.trieByteArray.size());
-
     unsigned int * gpuKeys = copyToGPUMemory(keys.data(), keys.size());
     float * results;
     allocateGPUMem(num_keys, &results);
@@ -50,7 +44,6 @@ std::pair<bool, std::string> testQueryNgrams(StringType arpafile) {
 
     //Clear gpu memory
     freeGPUMemory(gpuKeys);
-    freeGPUMemory(gpuByteArray);
     freeGPUMemory(results);
 
     bool allcorrect = true;
@@ -123,7 +116,7 @@ std::vector<unsigned int> vocabIDsent2queries(std::vector<unsigned int> vocabIDs
     return ret;
 }
 
-std::vector<std::string> interactiveRead() {
+std::vector<std::string> interactiveRead(LM &lm, unsigned char * gpuByteArray) {
     std::string response;
     boost::char_separator<char> sep(" ");
     while (true) {
@@ -136,7 +129,44 @@ std::vector<std::string> interactiveRead() {
         for (auto word : tokens) {
             sentence.push_back(word);
         }
+        for (auto item : sentence) {
+            std::cout << item << " ";
+        }
+        std::cout << std::endl << "Now vocabIDs:" << std::endl;
+        std::vector<unsigned int> vocabIDs = sent2vocabIDs(lm, sentence);
+
+        for (auto item : vocabIDs) {
+            std::cout << item << " ";
+        }
+        std::cout << std::endl << "Now to queries:" << std::endl;
+        std::vector<unsigned int> queries = vocabIDsent2queries(vocabIDs, lm.metadata.max_ngram_order);
+
+        for (auto item : queries) {
+            std::cout << item << " ";
+        }
+        std::cout << std::endl;
         //Now process the sentences
+        unsigned int num_keys = queries.size()/5;
+        unsigned int * gpuKeys = copyToGPUMemory(queries.data(), queries.size());
+        float * results;
+        allocateGPUMem(num_keys, &results);
+
+        searchWrapper(gpuByteArray, gpuKeys, num_keys, results);
+
+        //Copy back to host
+        float * results_cpu = new float[num_keys];
+        copyToHostMemory(results, results_cpu, num_keys);
+
+        freeGPUMemory(gpuKeys);
+        freeGPUMemory(results);
+        //Copy the results back to CPU and print them
+        float sum = 0;
+        for (unsigned int i = 0; i < num_keys; i++) {
+            sum += results_cpu[i];
+            std::cout << results_cpu[i] << " ";
+        }
+        std::cout << std::endl << "Prob sum: " << sum << std::endl;
+        delete[] results_cpu;
     }
     return std::vector<std::string>{std::string("pesho")};
 }
