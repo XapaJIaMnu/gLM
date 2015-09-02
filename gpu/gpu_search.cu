@@ -12,7 +12,7 @@
 
 //We want to copy a whole BTree node to shared memory. We will know the size in advance, we need to distribute the copying between
 //our threads. We might end up copying more than we need, but that is fine, as long as we avoid warp divergence.
-__global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, unsigned int * results){
+__global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, float * results){
 
     __shared__ unsigned int offsets[MAX_NUM_CHILDREN/2 +1]; //Reads in the first child offset + the shorts
     __shared__ unsigned int entries[ENTRIES_PER_NODE];
@@ -169,10 +169,9 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
                                 + found_idx*(sizeof(unsigned int) + sizeof(float) + sizeof(float)) //Skip the previous keys' payload
                                     + i*sizeof(unsigned int)]);  //Get next_level/prob/backoff
                     }
-                    results[blockIdx.x*3 + i] = payload[i]; //Copy the results of the search to an array which will later be checked
                 }
 
-                key = keys_shared[current_ngram];
+                key = keys_shared[current_ngram]; //@TODO Out of bounds memory access here probably
 
                 if (current_ngram < MAX_NGRAM && key != 0) {
                     __syncthreads();
@@ -193,7 +192,7 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
     }
 }
 
-void searchWrapper(unsigned char * global_mem, unsigned int * keys, unsigned int num_keys, unsigned int * results) {
+void searchWrapper(unsigned char * global_mem, unsigned int * keys, unsigned int num_keys, float * results) {
     //Block size should always be MAX_NUM_CHILDREN for best efficiency when searching the btree
     cudaEvent_t start, stop;
     cudaEventCreate(&start);

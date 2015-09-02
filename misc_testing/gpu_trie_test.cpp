@@ -36,13 +36,13 @@ int main(int argc, char* argv[]) {
     }
 
     unsigned int * gpuKeys = copyToGPUMemory(keys_to_query.data(), keys_to_query.size());
-    unsigned int * results;
-    allocateGPUMem(num_keys*3, &results);
+    float * results;
+    allocateGPUMem(num_keys, &results);
     searchWrapper(gpuByteArray, gpuKeys, num_keys, results);
 
     //Copy back to host
-    unsigned int * results_cpu = new unsigned int[num_keys*3];
-    copyToHostMemory(results, results_cpu, num_keys*3);
+    float * results_cpu = new float[num_keys];
+    copyToHostMemory(results, results_cpu, num_keys);
 
     //for (unsigned int i = 0; i < num_keys; i++) {
     //    std::cout << results_cpu[i*3] << " " << *(float *)&results_cpu[i*3 + 1] << " " << *(float *)&results_cpu[i*3 + 2] << std::endl;

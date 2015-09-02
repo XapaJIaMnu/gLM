@@ -19,11 +19,19 @@ void allocateGPUMem(size_t size, unsigned int ** gpu_mem) {
     CHECK_CALL(cudaMalloc(gpu_mem, size*sizeof(unsigned int)));
 }
 
-void copyToHostMemory(unsigned int * gpu_mem, unsigned int * cpu_mem, size_t size) {
-    CHECK_CALL(cudaMemcpy(cpu_mem, gpu_mem, size*sizeof(unsigned int), cudaMemcpyDeviceToHost));
+void allocateGPUMem(size_t size, float ** gpu_mem) {
+    CHECK_CALL(cudaMalloc(gpu_mem, size*sizeof(float)));
+}
+
+void copyToHostMemory(float * gpu_mem, float * cpu_mem, size_t size) {
+    CHECK_CALL(cudaMemcpy(cpu_mem, gpu_mem, size*sizeof(float), cudaMemcpyDeviceToHost));
 }
 
 void freeGPUMemory(unsigned char * gpu_ptr) {
+    CHECK_CALL(cudaFree(gpu_ptr));
+}
+
+void freeGPUMemory(float * gpu_ptr) {
     CHECK_CALL(cudaFree(gpu_ptr));
 }
 

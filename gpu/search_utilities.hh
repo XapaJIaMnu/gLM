@@ -23,7 +23,6 @@ void prepareSearchVectors(std::vector<unsigned int>& keys, std::vector<float>& c
         }
 
         check_against.push_back(text2.score);
-        check_against.push_back(text2.backoff);
 
         num_keys++;
         text2 = pesho2.readline();
@@ -86,14 +85,14 @@ void testGPUsearch(StringType arpafile, StringType pathTobinary) {
     unsigned char * gpuByteArray = copyToGPUMemory(lm.trieByteArray.data(), lm.trieByteArray.size());
 
     unsigned int * gpuKeys = copyToGPUMemory(keys.data(), keys.size());
-    unsigned int * results;
-    allocateGPUMem(total_num_keys*3, &results);
+    float * results;
+    allocateGPUMem(total_num_keys, &results);
 
     searchWrapper(gpuByteArray, gpuKeys, total_num_keys, results);
 
     //Copy back to host
-    unsigned int * results_cpu = new unsigned int[total_num_keys*3];
-    copyToHostMemory(results, results_cpu, total_num_keys*3);
+    float * results_cpu = new float[total_num_keys];
+    copyToHostMemory(results, results_cpu, total_num_keys);
 
     //Clear gpu memory
     freeGPUMemory(gpuKeys);
@@ -103,15 +102,14 @@ void testGPUsearch(StringType arpafile, StringType pathTobinary) {
     //Compare results
 
     for (unsigned int i = 0; i < total_num_keys; i++) {
-        float res_prob = *(float *)&results_cpu[i*3 + 1];
-        float res_backoff = *(float *)&results_cpu[i*3 + 2];
+        float res_prob = *(float *)&results_cpu[i];
 
-        float exp_prob = check_against[i*2];
-        float exp_backoff = check_against[i*2 + 1];
 
-        if (!((exp_prob == res_prob) && (exp_backoff == res_backoff))) {
-            std::cout << "Error expected prob: " << exp_prob << " and backoff: " << exp_backoff << " got: "
-                << res_prob << " and " << res_backoff << std::endl;
+        float exp_prob = check_against[i];
+
+        if (!(exp_prob == res_prob)) {
+            std::cout << "Error expected prob: " << exp_prob << " got: "
+                << res_prob << " ." << std::endl;
         }
     }
     delete[] results_cpu;

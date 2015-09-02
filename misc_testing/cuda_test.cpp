@@ -60,8 +60,8 @@ int main(int argc, char* argv[]) {
     }
     keys_cpu.push_back(2341);
 
-    unsigned int * results;
-    allocateGPUMem(num_entries*3, &results); //Store key + backoff + prob
+    float * results;
+    allocateGPUMem(num_entries, &results); //Store key + backoff + prob
 
     memcpyKeysStart = std::chrono::system_clock::now();
     unsigned int * keys_gpu = copyToGPUMemory(keys_cpu.data(), keys_cpu.size());
@@ -76,21 +76,19 @@ int main(int argc, char* argv[]) {
 
     memFree = std::chrono::system_clock::now();
 
-    unsigned int * results_cpu = new unsigned int[num_entries*3];
+    float * results_cpu = new float[num_entries];
     copyToHostMemory(results, results_cpu, num_entries*3); //copy back to the host the results
     freeGPUMemory(results);
 
     for (unsigned int i = 0; i < num_entries; i++) {
         //bool key_correct = results_cpu[i*3] == keys_cpu[i]; //This is next lvl 
-        float prob = *(float *)&results_cpu[i*3+1];
-        float backoff = *(float *)&results_cpu[i*3+2];
+        float prob = *(float *)&results_cpu[i];
 
         bool prob_correct = prob == (0.5f + keys_cpu[i]);
-        bool backoff_correct = backoff == (0.75f + keys_cpu[i]);
 
-        if (!(prob_correct && backoff_correct)) {
-            std::cout << "Something went wrong at i: " << i << "! Expected key: " << keys_cpu[i] << " prob: " << 0.5f + keys_cpu[i] << " backoff: " << 0.75f + keys_cpu[i]
-                << " but got key: " << results_cpu[i*3] << " prob: " << prob << " backoff " << backoff << std::endl;
+        if (!(prob_correct)) {
+            std::cout << "Something went wrong at i: " << i << "! Expected key: " << keys_cpu[i] << " prob: " << 0.5f + keys_cpu[i]
+                << " but got key: " << results_cpu[i] << " prob: " << prob << std::endl;
         }
     }
 
