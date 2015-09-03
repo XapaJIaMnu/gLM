@@ -44,7 +44,8 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
 
     //Backoof variables
     unsigned int backing_off = 0; //To check whether we are backing off
-    float accumulated_score = 1;
+    unsigned int num_backoff = 0; //To check how many items min we have to backoff to.
+    float accumulated_score = 0;
     bool get_backoff = false; //Are we looking to extract backoff or prob from our ngram
 
     //Set the start index
@@ -145,12 +146,20 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
                 //What we should do is get the probability of the last node that we found
                 //The last node that we found's probability should be in shared memory
 
-                accumulated_score *= *prob; //Multiply by the probability of n-1 gram
+                if (get_backoff) {
+                    break; //If we didn't find a get_backoff value
+                } else {
+                    accumulated_score += *prob; //Multiply by the probability of n-1 gram. WE are working in log space so multiply -> add 
+                }
                 backing_off++; //Start from further ahead in the backoff
+                num_backoff = current_ngram - 1; //How many terms are in our min backoff
+                                                //Current_ngram - 1 shows how many words we matched from the ngram and we need to backoff to exactly as many token
+                                                //as the minimum level backoff
                 current_ngram = backing_off; //Start trie lookup further ahead
-                key = keys_shared[current_ngram]; //This is necessary so we can gracefully exit rather than trying to access additional keys
+                key = keys_shared[current_ngram];
                 get_backoff = true;
                 current_btree_start = 0; //Go back to the root of the tries
+                __syncthreads();
                 //printf("We are here!\n");
                 break;
 
@@ -175,19 +184,23 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
 
                 if (current_ngram < MAX_NGRAM && key != 0) {
                     __syncthreads();
-                    current_btree_start = *next_level;
+                    current_btree_start = *next_level; //@TODO maybe we need to sync here as well
+                    if (get_backoff && (num_backoff < current_ngram)) { //Get all necessary backoffs on the way
+                        accumulated_score += *backoff;
+                    }
                 } else {
-                    if (i == 0) {
-                        if (get_backoff) {
-                            results[blockIdx.x] = *backoff*accumulated_score;
-                        } else {
-                            results[blockIdx.x] = *prob*accumulated_score;
-                        }
+                    if (get_backoff) {
+                        accumulated_score += *backoff;
+                    } else {
+                        accumulated_score += *prob;
                     }
                 }
 
                 break;
             }
+        }
+        if (i == 0) {
+            results[blockIdx.x] = accumulated_score;
         }
     }
 }
