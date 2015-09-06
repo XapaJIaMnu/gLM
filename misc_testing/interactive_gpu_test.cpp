@@ -14,7 +14,7 @@ int main(int argc, char* argv[]) {
     if (!res.first) {
         std::cerr << res.second << std::endl;
     }
-
+    std::cout << "Finished sanity check." << std::endl;
     interactiveRead(lm, gpuByteArray);
 
     //Free GPU memory

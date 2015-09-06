@@ -1,6 +1,7 @@
 #include "gpu_search.hh" 
 //#include "entry_structs.hh"
 #include <cuda_runtime.h>
+#define INVALID_CHILD 0xFFFFFFFF
 
 #define MAX_NUM_CHILDREN 128
 #define ENTRIES_PER_NODE (MAX_NUM_CHILDREN - 1)
@@ -28,6 +29,10 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
        keys_shared[i] = keys[(blockIdx.x*MAX_NGRAM) + i]; //Shared memory read here for up NUM_NGRAM keys 
     }
     __syncthreads();
+    //if (i == 0) { //Maybe necessary to prevent OutOfBounds reading on the shared memory
+    //    keys_shared[MAX_NGRAM] = 0; //Sometimes we are going out of bounds
+    //}
+    //__syncthreads();
 
     //Split some of the shared memory onto more comfrotable places
     unsigned short * offests_incremental = (unsigned short *)&offsets[1];
@@ -43,8 +48,7 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
     int num_entries; //Set the number of entries per node depending on whether we are internal or leaf.
 
     //Backoof variables
-    unsigned int backing_off = 0; //To check whether we are backing off
-    unsigned int num_backoff = 0; //To check how many items min we have to backoff to.
+    unsigned int match_length_found = 0; //To check what was our longest match so we know what to backoff to
     float accumulated_score = 0;
     bool get_backoff = false; //Are we looking to extract backoff or prob from our ngram
 
@@ -145,22 +149,20 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
                 //In this case we didn't find the key that we were looking for
                 //What we should do is get the probability of the last node that we found
                 //The last node that we found's probability should be in shared memory
-
+                backoff_notriecont:
                 if (get_backoff) {
-                    break; //If we didn't find a get_backoff value
+                    current_ngram = MAX_NGRAM;
+                    break; //If we didn't find a backoff, the value is zero; //We should go to end now, because any further backoffs
+                    // will be missing from the trie
                 } else {
-                    accumulated_score += *prob; //Multiply by the probability of n-1 gram. WE are working in log space so multiply -> add 
+                    accumulated_score += *prob; //We add the longest match of probability we found.
                 }
-                backing_off++; //Start from further ahead in the backoff
-                num_backoff = current_ngram - 1; //How many terms are in our min backoff
-                                                //Current_ngram - 1 shows how many words we matched from the ngram and we need to backoff to exactly as many token
-                                                //as the minimum level backoff
-                current_ngram = backing_off; //Start trie lookup further ahead
+                match_length_found = current_ngram - 1; //The length of the match found. We need to backoff from toplevel to here
+                current_ngram = 1; //Set backoff in -1. If we run into this case again we need to do nothing
                 key = keys_shared[current_ngram];
+                current_btree_start = 0;
                 get_backoff = true;
-                current_btree_start = 0; //Go back to the root of the tries
-                __syncthreads();
-                //printf("We are here!\n");
+                //__syncthreads(); Not needed?
                 break;
 
             } else {
@@ -181,17 +183,26 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
                 }
 
                 key = keys_shared[current_ngram]; //@TODO Out of bounds memory access here probably
+                //__syncthreads(); Not a proper fix! Replace that with proper check for invalid next level of btree
+                //if (*next_level == 0 && key != 0 && !get_backoff) { //key == 0 attempts to prevent <s> from falling here
+                //    goto unktoken; //If we have invalid "next_level" it's going to be indexed 0. True for unk
+                //}
 
                 if (current_ngram < MAX_NGRAM && key != 0) {
                     __syncthreads();
                     current_btree_start = *next_level; //@TODO maybe we need to sync here as well
-                    if (get_backoff && (num_backoff < current_ngram)) { //Get all necessary backoffs on the way
+                    if (current_btree_start == 0) {
+                        //STOP. We are in the case of a trie that doesn't continue further. In this case we should basically
+                        //do the backoff procuedure
+                        goto backoff_notriecont;
+                    }
+                    if (get_backoff && (match_length_found < current_ngram)) { //Get all necessary backoffs on the way
                         accumulated_score += *backoff;
                     }
                 } else {
-                    if (get_backoff) {
+                    if (get_backoff && (match_length_found < current_ngram)) {
                         accumulated_score += *backoff;
-                    } else {
+                    } else { //Actual match here
                         accumulated_score += *prob;
                     }
                 }
