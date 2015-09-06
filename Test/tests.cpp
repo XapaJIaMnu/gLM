@@ -1,18 +1,9 @@
-#define BOOST_TEST_DYN_LINK
-#define BOOST_TEST_MODULE Suites
 //#define ARPA_TESTFILEPATH is defined by cmake
-#define FLOAT_TOLERANCE 1e-5*1e-5
-#include <boost/test/unit_test.hpp>
+#include "tests_common.hh"
 #include "trie.hh"  //Includes tokenizer.hh and btree.hh
 #include "serialization.hh" //For testing properly serialization
 #include <ctime>
 #include <stdio.h>
-
-//Float comparison
-inline bool float_compare(float a, float b) { 
-
-    return (a - b) * (a - b) < FLOAT_TOLERANCE;
-}
 
 //Init b_tree and the set of numbers that it contains
 std::pair<B_tree *, std::set<unsigned int> > init_btree(int max_degree, unsigned int num_entries) {

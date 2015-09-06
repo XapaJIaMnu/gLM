@@ -6,7 +6,7 @@ int main(int argc, char* argv[]) {
     }
     //Create the models
     LM lm;
-    createTrieArray(argv[1], 127, lm); //@Todo make this somewhat not so hardcoded
+    createTrieArray(argv[1], ENTRIES_PER_NODE, lm); //@Todo make this somewhat not so hardcoded
     std::cout << "Finished create Btree trie." << std::endl;
     unsigned char * gpuByteArray = copyToGPUMemory(lm.trieByteArray.data(), lm.trieByteArray.size());
 

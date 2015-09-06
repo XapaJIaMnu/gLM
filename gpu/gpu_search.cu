@@ -1,15 +1,5 @@
 #include "gpu_search.hh" 
-//#include "entry_structs.hh"
 #include <cuda_runtime.h>
-#define INVALID_CHILD 0xFFFFFFFF
-
-#define MAX_NUM_CHILDREN 128
-#define ENTRIES_PER_NODE (MAX_NUM_CHILDREN - 1)
-#define ENTRY_SIZE (sizeof(unsigned int) + sizeof(unsigned int) + 2*sizeof(float)) //Same as the getEntrySize(true)
-#define MAX_NGRAM 5
-//Assume working with 256 thread DON'T RELY ENTIRERLY ON THOSE! Size may be smaller. need a parameter.
-//Requires two more threads then num of entries per node
-
 
 //We want to copy a whole BTree node to shared memory. We will know the size in advance, we need to distribute the copying between
 //our threads. We might end up copying more than we need, but that is fine, as long as we avoid warp divergence.
@@ -216,18 +206,19 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
     }
 }
 
-void searchWrapper(unsigned char * global_mem, unsigned int * keys, unsigned int num_keys, float * results) {
+//num_keys is the number of blocks we are going to launch. It is actually the number of ngrams queries
+void searchWrapper(unsigned char * global_mem, unsigned int * keys, unsigned int num_ngram_queries, float * results) {
     //Block size should always be MAX_NUM_CHILDREN for best efficiency when searching the btree
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
     cudaEventRecord(start);
-    gpuSearchBtree<<<num_keys, MAX_NUM_CHILDREN>>>(global_mem, keys, results);
+    gpuSearchBtree<<<num_ngram_queries, MAX_NUM_CHILDREN>>>(global_mem, keys, results);
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
     float milliseconds = 0;
     cudaEventElapsedTime(&milliseconds, start, stop);
-    printf("Searched %d keys in: %f milliseconds.\n", num_keys, milliseconds);
+    printf("Searched for %d ngrams in: %f milliseconds.\n", num_ngram_queries, milliseconds);
 }
 
 /* Can't compile easily with cmake. Maybe there's a better way

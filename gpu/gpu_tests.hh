@@ -146,7 +146,7 @@ std::vector<std::string> interactiveRead(LM &lm, unsigned char * gpuByteArray) {
         }
         std::cout << std::endl;
         //Now process the sentences
-        unsigned int num_keys = queries.size()/5;
+        unsigned int num_keys = queries.size()/MAX_NGRAM;
         unsigned int * gpuKeys = copyToGPUMemory(queries.data(), queries.size());
         float * results;
         allocateGPUMem(num_keys, &results);

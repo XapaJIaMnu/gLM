@@ -26,4 +26,5 @@ add_subdirectory (gpu)
 #add_subdirectory (Parser)
 enable_testing ()
 add_test (NAME AllTest COMMAND tests)
+add_test (NAME gpu_test COMMAND gpu_tests_suite)
 

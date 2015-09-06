@@ -14,4 +14,11 @@ target_link_libraries(tests
                       ${Boost_SYSTEM_LIBRARY}
                       ${Boost_IOSTREAMS_LIBRARY}
                       ${BZIP2_LIBRARIES}
-		     )
+                    )
+
+add_executable(gpu_tests_suite gpu_test_suite.cpp)
+target_link_libraries(gpu_tests_suite
+                      ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
+                      memory_management
+                      gpu_search
+                     )
