@@ -752,8 +752,7 @@ std::pair<bool, Entry> search_byte_arr(std::vector<unsigned char>& byte_arr, Ent
 
     bool found = false;
     Entry found_entry;
-    B_tree_node_rec temp_node;
-    temp_node.last = false;
+    B_tree_node_rec temp_node = {false, 0, 0, nullptr, 0, nullptr};
     unsigned int start = sizeof(root_size);
     unsigned short size = root_size;
     while (!found && !temp_node.last) {
