@@ -170,3 +170,47 @@ std::vector<std::string> interactiveRead(LM &lm, unsigned char * gpuByteArray) {
     }
     return std::vector<std::string>{std::string("pesho")};
 }
+
+unsigned int sent2QueryVec(std::string& sentence, std::vector<unsigned int>& all_queries, LM& lm) {
+    //Tokenize
+    boost::char_separator<char> sep(" ");
+    std::vector<std::string> tokenized_sentence;
+    boost::tokenizer<boost::char_separator<char> > tokens(sentence, sep);
+    for (auto word : tokens) {
+        tokenized_sentence.push_back(word);
+    }
+
+    //convert to vocabIDs
+    std::vector<unsigned int> vocabIDs = sent2vocabIDs(lm, tokenized_sentence);
+
+    //Convert to ngram Queries @TODO avoid memory copying here by writing directly into all_queries
+    std::vector<unsigned int> queries = vocabIDsent2queries(vocabIDs, lm.metadata.max_ngram_order);
+    unsigned int num_queries = queries.size(); //How many queries this sentence has.
+
+    //Now write to the global queries vector
+    all_queries.resize(all_queries.size() + num_queries);
+    std::memcpy(all_queries.data() + (all_queries.size() - num_queries), queries.data(), num_queries*sizeof(unsigned int));
+
+    //Return the number of queries this sentence has:
+    return num_queries;
+
+}
+
+template<class StringType>
+void sentencesToQueryVector(std::vector<unsigned int>& queries, std::vector<unsigned int>& sent_lengths, LM& lm, StringType sentsFile) {
+    std::ifstream queryFile;
+    queryFile.open(sentsFile);
+
+    if (queryFile.fail()) {
+        std::cerr << "Failed to open file " << sentsFile << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
+
+    while (!queryFile.eof()) {
+        std::string curr_sent;
+        std::getline(queryFile, curr_sent);
+        //Make this sentence into queries
+        unsigned int this_sent_queries = sent2QueryVec(curr_sent, queries, lm);
+        sent_lengths.push_back(this_sent_queries);
+    }
+}

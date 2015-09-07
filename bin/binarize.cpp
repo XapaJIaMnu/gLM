@@ -1,5 +1,6 @@
 #include "serialization.hh"
 #include "trie.hh"
+#include "gpu_search.hh"
 
 int main(int argc, char* argv[]){
     if (argc != 4 && argc != 3) {
@@ -9,7 +10,7 @@ int main(int argc, char* argv[]){
     unsigned short btree_node_size;
 
     if (argc == 3) {
-        btree_node_size = 256;
+        btree_node_size = ENTRIES_PER_NODE;
     } else {
         btree_node_size = atoi(argv[3]);
     }
