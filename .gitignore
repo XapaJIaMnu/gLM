@@ -26,3 +26,7 @@
 *.exe
 *.out
 *.app
+
+# Cmake Build Directories:
+release_build/*
+build/*
