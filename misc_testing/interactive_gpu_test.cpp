@@ -1,4 +1,4 @@
-#include "gpu_tests.hh"
+#include "gpu_LM_utils.hh"
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {

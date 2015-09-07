@@ -1,6 +1,6 @@
 //#define ARPA_TESTFILEPATH is defined by cmake
 #include "tests_common.hh"
-#include "gpu_tests.hh"
+#include "gpu_LM_utils.hh"
 #include <memory>
 #include <boost/tokenizer.hpp>
 
