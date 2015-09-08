@@ -177,9 +177,8 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
                 //if (*next_level == 0 && key != 0 && !get_backoff) { //key == 0 attempts to prevent <s> from falling here
                 //    goto unktoken; //If we have invalid "next_level" it's going to be indexed 0. True for unk
                 //}
-
+                __syncthreads();
                 if (current_ngram < MAX_NGRAM && key != 0) {
-                    __syncthreads();
                     current_btree_start = *next_level; //@TODO maybe we need to sync here as well
                     if (current_btree_start == 0) {
                         //STOP. We are in the case of a trie that doesn't continue further. In this case we should basically
