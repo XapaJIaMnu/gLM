@@ -7,6 +7,7 @@
 int main(int argc, char* argv[]){
     if (argc != 3) {
         std::cerr << "Usage:" << std::endl << argv[0] << " path_to_binary_lm_dir path_to_test_file" << std::endl;
+        std::exit(EXIT_FAILURE);
     }
     std::chrono::time_point<std::chrono::system_clock> start, readBinaryLM, memcpyBytearrayStart, memcpyBytearray,
         queryFileIOstart, queryFileIOend, gpuPrepareStart, gpuPrepareEnd, copyBackStart, copyBackEnd, memFreeStart, memFreeEnd;
@@ -17,8 +18,8 @@ int main(int argc, char* argv[]){
     readBinary(argv[1], lm);
 
     readBinaryLM = std::chrono::system_clock::now();
-    std::cout << "Read in language model:" << std::endl << lm.metadata << std::endl
-        << "Loading took: "  << std::chrono::duration<double>(readBinaryLM - start).count() << " seconds." << std::endl;
+    std::cout << "Read in language model:" << std::endl << lm.metadata << "Loading took: "
+        << std::chrono::duration<double>(readBinaryLM - start).count() << " seconds." << std::endl;
 
     //Copy the LM to the GPU memory: 
     memcpyBytearrayStart = std::chrono::system_clock::now();
