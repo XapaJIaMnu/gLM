@@ -37,7 +37,7 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
 
     int num_entries; //Set the number of entries per node depending on whether we are internal or leaf.
 
-    //Backoof variables
+    //Backoff variables
     unsigned int match_length_found = 0; //To check what was our longest match so we know what to backoff to
     float accumulated_score = 0;
     bool get_backoff = false; //Are we looking to extract backoff or prob from our ngram
@@ -152,7 +152,7 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
                 key = keys_shared[current_ngram];
                 current_btree_start = 0;
                 get_backoff = true;
-                //__syncthreads(); Not needed?
+                __syncthreads(); //Needed!
                 break;
 
             } else {
