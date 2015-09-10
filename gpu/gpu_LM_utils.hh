@@ -1,7 +1,6 @@
 #include "memory_management.hh"
 #include "gpu_search.hh"
 #include "trie.hh"
-#include "structs.hh"
 #include <sstream>
 
 template<class StringType>

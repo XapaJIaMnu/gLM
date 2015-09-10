@@ -2,6 +2,9 @@
 #include "tokenizer.hh"
 #include <limits>
 #include <exception>
+#ifndef API_VERSION //Means we have included the lm.h header, so we don't need it
+    #include "lm.hh"
+#endif 
 
 class offsetTooBig: public std::exception
 {

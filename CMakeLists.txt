@@ -17,6 +17,7 @@ include_directories ("${PROJECT_SOURCE_DIR}/Trie")
 include_directories ("${PROJECT_SOURCE_DIR}/Parser")
 include_directories ("${PROJECT_SOURCE_DIR}/misc")
 include_directories ("${PROJECT_SOURCE_DIR}/gpu")
+include_directories ("${PROJECT_SOURCE_DIR}/LM")
 
 add_subdirectory (Test)
 add_subdirectory (misc_testing)

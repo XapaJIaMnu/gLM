@@ -3,37 +3,7 @@
 #include <cstring>
 #include <iostream>
 #include "entry_structs.hh"
-#define API_VERSION 1.1
 #pragma once
-
-//Metadata to write on a config file.
-struct LM_metadata {
-    size_t byteArraySize;  //Size in bytes
-    unsigned short max_ngram_order;
-    float api_version;
-    unsigned short btree_node_size;
-};
-
-bool operator== (const LM_metadata &left, const LM_metadata &right) {
-    return left.byteArraySize == right.byteArraySize && left.max_ngram_order == right.max_ngram_order &&
-           left.api_version == right.api_version && left.btree_node_size == right.btree_node_size;
-}
-
-std::ostream& operator<< (std::ostream &out, LM_metadata &metadata) {
-    out << "Api version: " << metadata.api_version << std::endl
-    << "Byte array size: " << metadata.byteArraySize << std::endl
-    << "Size of the datasctructure in memory is: " << metadata.byteArraySize/(1024*1024) << " MB."<< std::endl
-    << "Max ngram order: " << metadata.max_ngram_order << std::endl;
-    return out;
-}
-
-//A struct that contains all possible and necessary information for an LM
-struct LM {
-    std::vector<unsigned char> trieByteArray;
-    std::map<std::string, unsigned int> encode_map;
-    std::map<unsigned int, std::string> decode_map;
-    LM_metadata metadata;
-};
 
 void EntriesToByteArray(std::vector<unsigned char> &byte_array, std::vector<Entry> &entries, bool pointer2Index = false) {
     //Appends a multitude of entries to the byte array.

@@ -1,8 +1,8 @@
 //#include "tokenizer.hh"
-#include "serialization.hh"
 #include "memory_management.hh"
 #include "gpu_search.hh"
 #include "trie.hh"
+#include "lm_impl.hh"
 
 template<class StringType>
 void prepareSearchVectors(std::vector<unsigned int>& keys, std::vector<float>& check_against, unsigned short max_ngram_order, unsigned int& total_num_keys, StringType arpafile) {
@@ -36,8 +36,7 @@ void prepareSearchVectors(std::vector<unsigned int>& keys, std::vector<float>& c
 
 template<class StringType>
 void testGPUsearch(StringType arpafile, StringType pathTobinary) {
-    LM lm; //The read in language model
-    readBinary(pathTobinary, lm);
+    LM lm(pathTobinary);
 
     //unsigned int max_btree_node_size = lm.metadata.btree_node_size; Will use when we move away from hardcoding it
     unsigned short max_ngram_order = lm.metadata.max_ngram_order;

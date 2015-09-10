@@ -1,5 +1,5 @@
-#include "serialization.hh"
 #include "trie.hh"
+#include "lm_impl.hh"
 #include "gpu_search.hh"
 
 int main(int argc, char* argv[]){
@@ -17,6 +17,6 @@ int main(int argc, char* argv[]){
     //Create the LM
     LM lm;
     createTrieArray(argv[1], btree_node_size, lm);
-    writeBinary(argv[2], lm);
+    lm.writeBinary(argv[2], true);
     return 0;
 }

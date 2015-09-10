@@ -1,5 +1,5 @@
-#include "serialization.hh"
 #include "gpu_LM_utils.hh"
+#include "lm_impl.hh"
 #include <memory>
 #include <chrono>
 #include <ctime>
@@ -14,8 +14,7 @@ int main(int argc, char* argv[]){
 
     start = std::chrono::system_clock::now();
 
-    LM lm; //The read in language model
-    readBinary(argv[1], lm);
+    LM lm(argv[1]); //The read in language model
 
     readBinaryLM = std::chrono::system_clock::now();
     std::cout << "Read in language model:" << std::endl << lm.metadata << "Loading took: "

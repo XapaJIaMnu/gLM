@@ -1,8 +1,8 @@
 find_package(Boost COMPONENTS serialization filesystem iostreams system REQUIRED)
 find_package(BZip2 REQUIRED)
 
-add_executable(binarize binarize.cpp)
-add_executable(batch_query batch_query.cpp)
+add_executable(binarize binarize.cpp )
+add_executable(batch_query batch_query.cpp )
 
 target_link_libraries(binarize
                       ${Boost_SERIALIZATION_LIBRARY}

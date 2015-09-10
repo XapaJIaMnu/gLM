@@ -1,9 +1,10 @@
 //#define ARPA_TESTFILEPATH is defined by cmake
 #include "tests_common.hh"
 #include "trie.hh"  //Includes tokenizer.hh and btree.hh
-#include "serialization.hh" //For testing properly serialization
+#include "lm_impl.hh"
 #include <ctime>
 #include <stdio.h>
+#include <boost/filesystem.hpp>
 
 //Init b_tree and the set of numbers that it contains
 std::pair<B_tree *, std::set<unsigned int> > init_btree(int max_degree, unsigned int num_entries) {
@@ -317,10 +318,9 @@ BOOST_AUTO_TEST_CASE(serialization_test) {
     //Create the btree_trie_array;
     LM out_lm;
     createTrieArray(ARPA_TESTFILEPATH, 256, out_lm);
-    writeBinary(s.str(), out_lm);
+    out_lm.writeBinary(s.str(), true);
 
-    LM in_lm;
-    readBinary(s.str(), in_lm);
+    LM in_lm(s.str());
 
     BOOST_CHECK_MESSAGE(in_lm.metadata == out_lm.metadata, "Mismatch in the read in and written metadata.");
     if (!(in_lm.metadata == out_lm.metadata)) { //BOOST_CHECK_MESSAGE doesn't work with overloaded ostreams so print separately.

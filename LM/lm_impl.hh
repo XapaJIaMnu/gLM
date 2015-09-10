@@ -1,8 +1,6 @@
-#include <iostream>
-#include <fstream>
-#include <string>
-#include "structs.hh"
-
+#ifndef API_VERSION //Means we have included the lm.h header, so we don't need it
+    #include "lm.hh"
+#endif 
 //Use boost to serialize the vectors
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
@@ -52,7 +50,7 @@ void readDatastructure(DataStructure& byte_arr, const StringType path){
 }
 
 template<class StringType>
-void storeConfigFile(LM_metadata metadata, const StringType path) {
+void LM::storeConfigFile(const StringType path, bool compactStorage) {
     std::ofstream configfile(path);
 
     if (configfile.fail()) {
@@ -64,6 +62,7 @@ void storeConfigFile(LM_metadata metadata, const StringType path) {
     configfile << metadata.max_ngram_order << '\n';
     configfile << metadata.api_version << '\n';
     configfile << metadata.btree_node_size << '\n';
+    configfile << !compactStorage << '\n';
     //Also store in the config file the size of the datastructure. Useful to know if we can fit our model
     //on the available GPU memory, but we don't actually need to ever read it back. It is for the user's benefit.
     configfile << "BTree Trie memory size: " << metadata.byteArraySize/(1024*1024) << " MB\n";
@@ -71,8 +70,7 @@ void storeConfigFile(LM_metadata metadata, const StringType path) {
 }
 
 template<class StringType>
-LM_metadata readConfigFile(const StringType path) {
-    LM_metadata ret;
+void LM::readConfigFile(const StringType path) {
     std::ifstream configfile(path);
 
     if (configfile.fail()) {
@@ -84,11 +82,11 @@ LM_metadata readConfigFile(const StringType path) {
 
     //Get byte array size
     getline(configfile, line);
-    ret.byteArraySize = std::stoull(line.c_str());
+    metadata.byteArraySize = std::stoull(line.c_str());
 
     //Get max ngram order
     getline(configfile, line);
-    ret.max_ngram_order = atoi(line.c_str());
+    metadata.max_ngram_order = atoi(line.c_str());
 
     //Check api version
     getline(configfile, line);
@@ -96,13 +94,16 @@ LM_metadata readConfigFile(const StringType path) {
         std::cerr << "The gLM API has changed, please rebinarize your language model." << std::endl;
         exit(EXIT_FAILURE);
     } else {
-        ret.api_version = atof(line.c_str());
+        metadata.api_version = atof(line.c_str());
     }
 
     //Get btree_node_size
     getline(configfile, line);
-    ret.btree_node_size = atoi(line.c_str());
-    return ret;
+    metadata.btree_node_size = atoi(line.c_str());
+
+    //Get the type of serialization: mmap or boost_serialization. True(1) for boost_serialization
+    getline(configfile, line);
+    metadata.mmapd = (bool)atoi(line.c_str());
 }
 
 template<class StringType>
@@ -122,22 +123,59 @@ void createDirIfnotPresent(const StringType path) {
 
 //Given a path and an LM binarizes the LM there
 template<class StringType>
-void writeBinary(const StringType path, LM& lm) {
+void LM::writeBinary(const StringType path, bool compactStorage) {
     createDirIfnotPresent(path);
     std::string basepath(path);
-    storeConfigFile(lm.metadata, basepath + "/config");
-    serializeDatastructure(lm.trieByteArray, basepath + "/lm.bin");
-    serializeDatastructure(lm.encode_map, basepath + "/encode.map");
-    serializeDatastructure(lm.decode_map, basepath + "/decode.map");
+    storeConfigFile(basepath + "/config", compactStorage);
+    serializeDatastructure(encode_map, basepath + "/encode.map");
+    serializeDatastructure(decode_map, basepath + "/decode.map");
+
+    //Determine whether to use mmap to write to disk or boost_serialization:
+    if (compactStorage) {
+        serializeDatastructure(trieByteArray, basepath + "/lm.bin");
+    } else {
+        std::cerr << "stub! mmap is not implemented yet" << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
+    
 }
 
 //Reads the model into the given (presumably empty byte_arr)
 template<class StringType>
-void readBinary(const StringType path, LM& lm) {
+LM::LM(const StringType path) {
     std::string basepath(path);
-    lm.metadata = readConfigFile(basepath + "/config");
-    lm.trieByteArray.reserve(lm.metadata.byteArraySize);
-    readDatastructure(lm.trieByteArray, basepath + "/lm.bin");
-    readDatastructure(lm.encode_map, basepath + "/encode.map");
-    readDatastructure(lm.decode_map, basepath + "/decode.map");
+    this->readConfigFile(basepath + "/config");
+    readDatastructure(this->encode_map, basepath + "/encode.map");
+    readDatastructure(this->decode_map, basepath + "/decode.map");
+
+    if (!metadata.mmapd) {
+        trieByteArray.reserve(metadata.byteArraySize);
+        readDatastructure(trieByteArray, basepath + "/lm.bin");
+    } else {
+        std::cerr << "stub! mmap is not implemented yet" << std::endl;
+        char * trieByteArrayArr = readMmapTrie((basepath + "/lm.bin").c_str(), metadata.byteArraySize);
+        std::exit(EXIT_FAILURE);
+    }
 }
+
+char * readMmapTrie(const char * filename, size_t size) {
+    //Initial position of the file is the end of the file, thus we know the size
+    int fd;
+    char * map;
+
+    fd = open(filename, O_RDONLY);
+    if (fd == -1) {
+        perror("Error opening file for reading");
+        exit(EXIT_FAILURE);
+    }
+
+    map = (char *)mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
+
+    if (map == MAP_FAILED) {
+        close(fd);
+        perror("Error mmapping the file");
+        exit(EXIT_FAILURE);
+    }
+
+    return map;
+} 
