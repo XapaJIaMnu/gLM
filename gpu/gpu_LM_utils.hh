@@ -65,14 +65,20 @@ std::pair<bool, std::string> testQueryNgrams(LM& lm, unsigned char * gpuByteArra
 }
 
 //Converts a raw sentence into one suitable for generating ngrams from, with vocabIDs
-std::vector<unsigned int> sent2vocabIDs(LM &lm, std::vector<std::string> input) {
+std::vector<unsigned int> sent2vocabIDs(LM &lm, std::vector<std::string> input, bool addBeginEndMarkers) {
     std::vector<unsigned int> ret;
-    ret.reserve(input.size() + 2);
+    if (addBeginEndMarkers) {
+        ret.reserve(input.size() + 2);
+    } else {
+        ret.reserve(input.size());
+    }
     unsigned int unktoken = lm.encode_map.find(std::string("<unk>"))->second; //@TODO don't look up UNKTOKEN every time, get it from somewhere
     unsigned int beginsent = lm.encode_map.find(std::string("<s>"))->second;
     unsigned int endsent = lm.encode_map.find(std::string("</s>"))->second;
 
-    ret.push_back(beginsent);
+    if (addBeginEndMarkers) {
+        ret.push_back(beginsent);
+    }
     for (auto item : input) {
         std::unordered_map<std::string, unsigned int>::iterator it = lm.encode_map.find(item);
         if (it != lm.encode_map.end()) {
@@ -81,7 +87,9 @@ std::vector<unsigned int> sent2vocabIDs(LM &lm, std::vector<std::string> input) 
             ret.push_back(unktoken);
         }
     }
-    ret.push_back(endsent);
+    if (addBeginEndMarkers) {
+        ret.push_back(endsent);
+    }
 
     return ret;
 }
@@ -115,7 +123,7 @@ std::vector<unsigned int> vocabIDsent2queries(std::vector<unsigned int> vocabIDs
     return ret;
 }
 
-std::vector<std::string> interactiveRead(LM &lm, unsigned char * gpuByteArray) {
+std::vector<std::string> interactiveRead(LM &lm, unsigned char * gpuByteArray, bool addBeginEndMarkers = true) {
     std::string response;
     boost::char_separator<char> sep(" ");
     while (true) {
@@ -132,7 +140,7 @@ std::vector<std::string> interactiveRead(LM &lm, unsigned char * gpuByteArray) {
             std::cout << item << " ";
         }
         std::cout << std::endl << "Now vocabIDs:" << std::endl;
-        std::vector<unsigned int> vocabIDs = sent2vocabIDs(lm, sentence);
+        std::vector<unsigned int> vocabIDs = sent2vocabIDs(lm, sentence, addBeginEndMarkers);
 
         for (auto item : vocabIDs) {
             std::cout << item << " ";
@@ -170,7 +178,7 @@ std::vector<std::string> interactiveRead(LM &lm, unsigned char * gpuByteArray) {
     return std::vector<std::string>{std::string("pesho")};
 }
 
-unsigned int sent2QueryVec(std::string& sentence, std::vector<unsigned int>& all_queries, LM& lm) {
+unsigned int sent2QueryVec(std::string& sentence, std::vector<unsigned int>& all_queries, LM& lm, bool addBeginEndMarkers) {
     //Tokenize
     boost::char_separator<char> sep(" ");
     std::vector<std::string> tokenized_sentence;
@@ -180,7 +188,7 @@ unsigned int sent2QueryVec(std::string& sentence, std::vector<unsigned int>& all
     }
 
     //convert to vocabIDs
-    std::vector<unsigned int> vocabIDs = sent2vocabIDs(lm, tokenized_sentence);
+    std::vector<unsigned int> vocabIDs = sent2vocabIDs(lm, tokenized_sentence, addBeginEndMarkers);
 
     //Convert to ngram Queries @TODO avoid memory copying here by writing directly into all_queries
     std::vector<unsigned int> queries = vocabIDsent2queries(vocabIDs, lm.metadata.max_ngram_order);
@@ -196,7 +204,7 @@ unsigned int sent2QueryVec(std::string& sentence, std::vector<unsigned int>& all
 }
 
 template<class StringType>
-void sentencesToQueryVector(std::vector<unsigned int>& queries, std::vector<unsigned int>& sent_lengths, LM& lm, StringType sentsFile) {
+void sentencesToQueryVector(std::vector<unsigned int>& queries, std::vector<unsigned int>& sent_lengths, LM& lm, StringType sentsFile, bool addBeginEndMarkers = true) {
     std::ifstream queryFile;
     queryFile.open(sentsFile);
 
@@ -208,8 +216,11 @@ void sentencesToQueryVector(std::vector<unsigned int>& queries, std::vector<unsi
     while (!queryFile.eof()) {
         std::string curr_sent;
         std::getline(queryFile, curr_sent);
+        if (curr_sent == "") {
+            continue; //Skip empty lines
+        }
         //Make this sentence into queries
-        unsigned int this_sent_queries = sent2QueryVec(curr_sent, queries, lm);
+        unsigned int this_sent_queries = sent2QueryVec(curr_sent, queries, lm, addBeginEndMarkers);
         sent_lengths.push_back(this_sent_queries);
     }
 }

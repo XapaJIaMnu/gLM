@@ -28,6 +28,7 @@ inline std::ostream& operator<< (std::ostream &out, LM_metadata &metadata) {
     out << "Api version: " << metadata.api_version << std::endl
     << "Byte array size: " << metadata.byteArraySize << std::endl
     << "Size of the datasctructure in memory is: " << metadata.byteArraySize/(1024*1024) << " MB."<< std::endl
+    << "Btree node size is: " << metadata.btree_node_size << std::endl
     << "Max ngram order: " << metadata.max_ngram_order << std::endl;
     return out;
 };

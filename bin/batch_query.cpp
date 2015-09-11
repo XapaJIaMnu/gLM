@@ -5,9 +5,13 @@
 #include <ctime>
 
 int main(int argc, char* argv[]){
-    if (argc != 3) {
-        std::cerr << "Usage:" << std::endl << argv[0] << " path_to_binary_lm_dir path_to_test_file" << std::endl;
+    if (argc != 4 && argc != 3) {
+        std::cerr << "Usage:" << std::endl << argv[0] << " path_to_binary_lm_dir path_to_test_file [addBeginEndMarkers_bool]" << std::endl;
         std::exit(EXIT_FAILURE);
+    }
+    bool addBeginEndMarkers = true;
+    if (argc == 4) {
+        addBeginEndMarkers = atoi(argv[3]);
     }
     std::chrono::time_point<std::chrono::system_clock> start, readBinaryLM, memcpyBytearrayStart, memcpyBytearray,
         queryFileIOstart, queryFileIOend, gpuPrepareStart, gpuPrepareEnd, copyBackStart, copyBackEnd, memFreeStart, memFreeEnd;
@@ -31,7 +35,7 @@ int main(int argc, char* argv[]){
 
     std::vector<unsigned int> queries;
     std::vector<unsigned int> sent_lengths;
-    sentencesToQueryVector(queries, sent_lengths, lm, argv[2]);
+    sentencesToQueryVector(queries, sent_lengths, lm, argv[2], addBeginEndMarkers);
 
     queryFileIOend = std::chrono::system_clock::now();
     std::cout << "Preparing the queries took: " << std::chrono::duration<double>(queryFileIOend - queryFileIOstart).count() << " seconds." << std::endl;

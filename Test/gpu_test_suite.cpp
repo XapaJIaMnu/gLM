@@ -14,7 +14,7 @@
     }
 
     //Convert to vocab IDs
-    std::vector<unsigned int> vocabIDs = sent2vocabIDs(lm, tokenized_sentence);
+    std::vector<unsigned int> vocabIDs = sent2vocabIDs(lm, tokenized_sentence, true);
 
     //Convert to ngram_queries to be parsed to the GPU
     std::vector<unsigned int> queries = vocabIDsent2queries(vocabIDs, lm.metadata.max_ngram_order);
