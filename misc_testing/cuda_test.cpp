@@ -66,8 +66,9 @@ int main(int argc, char* argv[]) {
     memcpyKeysStart = std::chrono::system_clock::now();
     unsigned int * keys_gpu = copyToGPUMemory(keys_cpu.data(), keys_cpu.size());
     memcpyKeysEnd = std::chrono::system_clock::now();
+    unsigned int entrySize = getEntrySize(/*pointer2index =*/ true);
 
-    searchWrapper(gpuByteArray, keys_gpu, keys_cpu.size(), results); //Test key not found
+    searchWrapper(gpuByteArray, keys_gpu, keys_cpu.size(), results, max_degree, entrySize, 1); //Test key not found
     cudaDevSync();
     kernel = std::chrono::system_clock::now();
 

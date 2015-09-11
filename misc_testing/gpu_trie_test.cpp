@@ -38,7 +38,8 @@ int main(int argc, char* argv[]) {
     unsigned int * gpuKeys = copyToGPUMemory(keys_to_query.data(), keys_to_query.size());
     float * results;
     allocateGPUMem(num_keys, &results);
-    searchWrapper(gpuByteArray, gpuKeys, num_keys, results);
+    unsigned int entrySize = getEntrySize(/*pointer2index =*/ true);
+    searchWrapper(gpuByteArray, gpuKeys, num_keys, results, lm.metadata.btree_node_size, entrySize, lm.metadata.max_ngram_order);
 
     //Copy back to host
     float * results_cpu = new float[num_keys];

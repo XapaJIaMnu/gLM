@@ -34,8 +34,9 @@ std::pair<bool, std::string> testQueryNgrams(LM& lm, unsigned char * gpuByteArra
     unsigned int * gpuKeys = copyToGPUMemory(keys.data(), keys.size());
     float * results;
     allocateGPUMem(num_keys, &results);
+    unsigned int entrySize = getEntrySize(/*pointer2index =*/ true);
 
-    searchWrapper(gpuByteArray, gpuKeys, num_keys, results);
+    searchWrapper(gpuByteArray, gpuKeys, num_keys, results, lm.metadata.btree_node_size, entrySize, lm.metadata.max_ngram_order);
 
     //Copy back to host
     float * results_cpu = new float[num_keys];
@@ -126,6 +127,7 @@ std::vector<unsigned int> vocabIDsent2queries(std::vector<unsigned int> vocabIDs
 std::vector<std::string> interactiveRead(LM &lm, unsigned char * gpuByteArray, bool addBeginEndMarkers = true) {
     std::string response;
     boost::char_separator<char> sep(" ");
+    unsigned int entrySize = getEntrySize(/*pointer2index =*/ true);
     while (true) {
         getline(std::cin, response);
         if (response == "/end") {
@@ -153,12 +155,12 @@ std::vector<std::string> interactiveRead(LM &lm, unsigned char * gpuByteArray, b
         }
         std::cout << std::endl;
         //Now process the sentences
-        unsigned int num_keys = queries.size()/MAX_NGRAM;
+        unsigned int num_keys = queries.size()/lm.metadata.max_ngram_order;
         unsigned int * gpuKeys = copyToGPUMemory(queries.data(), queries.size());
         float * results;
         allocateGPUMem(num_keys, &results);
 
-        searchWrapper(gpuByteArray, gpuKeys, num_keys, results);
+        searchWrapper(gpuByteArray, gpuKeys, num_keys, results, lm.metadata.btree_node_size, entrySize, lm.metadata.max_ngram_order);
 
         //Copy back to host
         float * results_cpu = new float[num_keys];

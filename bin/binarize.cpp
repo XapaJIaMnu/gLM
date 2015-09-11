@@ -7,7 +7,7 @@ int main(int argc, char* argv[]){
         std::cerr << "Usage:" << std::endl << argv[0] << " path_to_arpa_file output_path [btree_node_size CompactFormat]." << std::endl;
         std::exit(EXIT_FAILURE);
     }
-    unsigned short btree_node_size = ENTRIES_PER_NODE;
+    unsigned short btree_node_size = 127;
     bool CompactFormat = false;
 
     if (argc == 5) {

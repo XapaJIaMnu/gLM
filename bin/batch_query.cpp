@@ -50,9 +50,10 @@ int main(int argc, char* argv[]){
 
     gpuPrepareEnd = std::chrono::system_clock::now();
     std::cout << "Copying queries to gpu and other gpu work took: " << std::chrono::duration<double>(gpuPrepareEnd - gpuPrepareStart).count() << " seconds." << std::endl;
-
+    unsigned int entrySize = getEntrySize(/*pointer2index =*/ true);
+    
     //Now execute the search
-    searchWrapper(gpuByteArray, gpuKeys, num_keys, results);
+    searchWrapper(gpuByteArray, gpuKeys, num_keys, results, lm.metadata.btree_node_size, entrySize, lm.metadata.max_ngram_order);
 
     //copy results back to CPU
     copyBackStart = std::chrono::system_clock::now();
