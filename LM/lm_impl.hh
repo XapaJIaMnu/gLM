@@ -134,8 +134,9 @@ void LM::writeBinary(const StringType path, bool compactStorage) {
     if (compactStorage) {
         serializeDatastructure(trieByteArray, basepath + "/lm.bin");
     } else {
-        std::cerr << "stub! mmap is not implemented yet" << std::endl;
-        std::exit(EXIT_FAILURE);
+        std::ofstream os (basepath + "/lm.bin", std::ios::binary);  
+        os.write(reinterpret_cast<const char *>(trieByteArray.data()), trieByteArray.size());
+        os.close();
     }
     
 }
@@ -152,16 +153,18 @@ LM::LM(const StringType path) {
         trieByteArray.reserve(metadata.byteArraySize);
         readDatastructure(trieByteArray, basepath + "/lm.bin");
     } else {
-        std::cerr << "stub! mmap is not implemented yet" << std::endl;
-        char * trieByteArrayArr = readMmapTrie((basepath + "/lm.bin").c_str(), metadata.byteArraySize);
-        std::exit(EXIT_FAILURE);
+        //@TODO we should really make that step optional
+        //We don't need the copy to vector since we're only going to copy it to GPU memory
+        mmapedByteArray= readMmapTrie((basepath + "/lm.bin").c_str(), metadata.byteArraySize);
+        trieByteArray.resize(metadata.byteArraySize);
+        std::memcpy(trieByteArray.data(), mmapedByteArray, metadata.byteArraySize);
     }
 }
 
-char * readMmapTrie(const char * filename, size_t size) {
+unsigned char * readMmapTrie(const char * filename, size_t size) {
     //Initial position of the file is the end of the file, thus we know the size
     int fd;
-    char * map;
+    unsigned char * map;
 
     fd = open(filename, O_RDONLY);
     if (fd == -1) {
@@ -169,7 +172,7 @@ char * readMmapTrie(const char * filename, size_t size) {
         exit(EXIT_FAILURE);
     }
 
-    map = (char *)mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
+    map = (unsigned char *)mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
 
     if (map == MAP_FAILED) {
         close(fd);

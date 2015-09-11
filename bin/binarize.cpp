@@ -3,20 +3,22 @@
 #include "gpu_search.hh"
 
 int main(int argc, char* argv[]){
-    if (argc != 4 && argc != 3) {
-        std::cerr << "Usage:" << std::endl << argv[0] << " path_to_arpa_file output_path [btree_node_size]." << std::endl;
+    if (argc != 5 && argc != 3) {
+        std::cerr << "Usage:" << std::endl << argv[0] << " path_to_arpa_file output_path [btree_node_size CompactFormat]." << std::endl;
         std::exit(EXIT_FAILURE);
     }
-    unsigned short btree_node_size;
+    unsigned short btree_node_size = ENTRIES_PER_NODE;
+    bool CompactFormat = false;
 
-    if (argc == 3) {
-        btree_node_size = ENTRIES_PER_NODE;
-    } else {
+    if (argc == 5) {
         btree_node_size = atoi(argv[3]);
+        CompactFormat = atoi(argv[3]);
+    } else {
+        
     }
     //Create the LM
     LM lm;
     createTrieArray(argv[1], btree_node_size, lm);
-    lm.writeBinary(argv[2], true);
+    lm.writeBinary(argv[2], CompactFormat);
     return 0;
 }

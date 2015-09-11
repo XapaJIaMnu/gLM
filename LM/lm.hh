@@ -39,6 +39,7 @@ class LM {
         void readConfigFile(const StringType path);
         template<class StringType>
         void storeConfigFile(const StringType path, bool compactStorage);
+        unsigned char * mmapedByteArray;
     public:
         std::vector<unsigned char> trieByteArray;
         std::map<std::string, unsigned int> encode_map;
@@ -54,7 +55,7 @@ class LM {
         //A destructor. We need to check wheter the memory map needs to be undone
         ~LM() {
             if (metadata.mmapd) {
-                std::cerr << "STUB! Unimplemented" << std::endl;
+                munmap(reinterpret_cast<void *>(mmapedByteArray), metadata.byteArraySize);
             }
         }
 
@@ -64,7 +65,7 @@ class LM {
 };
 
 
-char * readMmapTrie(const char * filename, size_t size);
+unsigned char * readMmapTrie(const char * filename, size_t size);
 
 template<class StringType>
 void createDirIfnotPresent(const StringType path);

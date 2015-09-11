@@ -334,4 +334,31 @@ BOOST_AUTO_TEST_CASE(serialization_test) {
     boost::filesystem::remove_all(s.str());
 }
 
+BOOST_AUTO_TEST_CASE(serialization_mmap_test) {
+    std::string filepath = "/tmp/";
+    const long double sysTime = time(0);
+    std::stringstream s;
+    s << filepath << sysTime; //Use random tmp directory
+
+    //Create the btree_trie_array;
+    LM out_lm;
+    createTrieArray(ARPA_TESTFILEPATH, 256, out_lm);
+    out_lm.writeBinary(s.str());
+
+    LM in_lm(s.str());
+
+    BOOST_CHECK_MESSAGE(in_lm.metadata == out_lm.metadata, "Mismatch in the read in and written metadata.");
+    if (!(in_lm.metadata == out_lm.metadata)) { //BOOST_CHECK_MESSAGE doesn't work with overloaded ostreams so print separately.
+        std::cout << "Read metadata:" << std::endl << in_lm.metadata << "Written metadata:" << std::endl << out_lm.metadata;
+    }
+
+    BOOST_CHECK_MESSAGE(in_lm.metadata.mmapd == true, "Error, mmapd is not set properly.");
+
+    BOOST_CHECK_MESSAGE(out_lm.trieByteArray == in_lm.trieByteArray, "Read and written binary byte arrays differ.");
+    BOOST_CHECK_MESSAGE(out_lm.encode_map == in_lm.encode_map, "Read and written encode maps differ.");
+    BOOST_CHECK_MESSAGE(out_lm.decode_map == in_lm.decode_map, "Read and written decode maps differ.");
+
+    boost::filesystem::remove_all(s.str());
+}
+
 BOOST_AUTO_TEST_SUITE_END()
