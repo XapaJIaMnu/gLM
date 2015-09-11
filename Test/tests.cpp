@@ -210,7 +210,7 @@ BOOST_AUTO_TEST_CASE(random_arpa_lines_test) {
         if (i == 12640){
             BOOST_CHECK_MESSAGE(float_compare(text.score, -1.0943657), "Got " << text.score << " expected -1.0943657. Line number: " << i);
             //Decode word
-            std::map<unsigned int, std::string>::iterator it;
+            std::unordered_map<unsigned int, std::string>::iterator it;
             std::string word = pesho.decode_map.find(text.ngrams[0])->second;
             BOOST_CHECK_MESSAGE(word == "having", "Got " << word << " expected having. Line number: " << i);
         }
@@ -218,7 +218,7 @@ BOOST_AUTO_TEST_CASE(random_arpa_lines_test) {
         if (i == 15374){
             BOOST_CHECK_MESSAGE(float_compare(text.score, -0.83306277), "Got " << text.score << " expected -0.83306277. Line number: " << i);
             //Decode word
-            std::map<unsigned int, std::string>::iterator it;
+            std::unordered_map<unsigned int, std::string>::iterator it;
             std::string word = pesho.decode_map.find(text.ngrams[3])->second;
             BOOST_CHECK_MESSAGE(word == "safety", "Got " << word << " expected safety. Line number: " << i);
         }
@@ -226,7 +226,7 @@ BOOST_AUTO_TEST_CASE(random_arpa_lines_test) {
         if (i == 22404){
             BOOST_CHECK_MESSAGE(text.ngram_size == 5, "Got " << text.ngram_size << " expected 5. Line number: " << i);
             //Decode word
-            std::map<unsigned int, std::string>::iterator it;
+            std::unordered_map<unsigned int, std::string>::iterator it;
             std::string word = pesho.decode_map.find(text.ngrams[1])->second;
             BOOST_CHECK_MESSAGE(word == "millennium", "Got " << word << " expected millennium. Line number: " << i);
         }

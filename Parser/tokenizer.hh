@@ -3,7 +3,7 @@
 #include <boost/tokenizer.hpp>
 #include <fstream>
 #include <stdlib.h>
-#include <map>
+#include <unordered_map>
 #include <cstdlib>
 #include <algorithm>
 
@@ -34,8 +34,8 @@ class ArpaReader {
 
     public:
         //Maps for converting to and from vocabulary ids to strings.
-        std::map<std::string, unsigned int> encode_map;
-        std::map<unsigned int, std::string> decode_map;
+        std::unordered_map<std::string, unsigned int> encode_map;
+        std::unordered_map<unsigned int, std::string> decode_map;
         unsigned short max_ngrams;
 
         //Functions
@@ -128,7 +128,7 @@ processed_line ArpaReader::readline() {
     for (auto current_word : ngrams){
         //Check if the current word has a vocabulary ID assigned and if not
         //produce one.
-        std::map<std::string, unsigned int>::iterator id_found = encode_map.find(current_word);
+        std::unordered_map<std::string, unsigned int>::iterator id_found = encode_map.find(current_word);
         if (id_found != encode_map.end()) {
             //We already have that vocabulary id, just use it to append to the ngrams vector
             rettext.ngrams.push_back(id_found->second);

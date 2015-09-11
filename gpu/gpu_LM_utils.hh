@@ -74,7 +74,7 @@ std::vector<unsigned int> sent2vocabIDs(LM &lm, std::vector<std::string> input) 
 
     ret.push_back(beginsent);
     for (auto item : input) {
-        std::map<std::string, unsigned int>::iterator it = lm.encode_map.find(item);
+        std::unordered_map<std::string, unsigned int>::iterator it = lm.encode_map.find(item);
         if (it != lm.encode_map.end()) {
             ret.push_back(it->second);
         } else {

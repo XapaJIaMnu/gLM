@@ -1,4 +1,4 @@
-#define API_VERSION 1.5
+#define API_VERSION 1.6
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -6,7 +6,7 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <vector>
-#include <map>
+#include <unordered_map>
 #include <iostream>
 #pragma once
 
@@ -16,7 +16,7 @@ struct LM_metadata {
     unsigned short max_ngram_order;
     float api_version;
     unsigned short btree_node_size;
-    bool mmapd; //Identify whether we have the memory mapped version or not
+    bool mmapd = false; //Identify whether we have the memory mapped version or not. False by default so we don't get a segfault in destructor.
 };
 
 inline bool operator== (const LM_metadata &left, const LM_metadata &right) {
@@ -42,8 +42,8 @@ class LM {
         unsigned char * mmapedByteArray;
     public:
         std::vector<unsigned char> trieByteArray;
-        std::map<std::string, unsigned int> encode_map;
-        std::map<unsigned int, std::string> decode_map;
+        std::unordered_map<std::string, unsigned int> encode_map;
+        std::unordered_map<unsigned int, std::string> decode_map;
         LM_metadata metadata;
 
         //Constructors:
