@@ -1,16 +1,24 @@
 #include "gpu_search.hh" 
 #include <cuda_runtime.h>
+#include <gpu_common.h>
 
 extern __shared__ unsigned int shared_mem[];
+//bool constant_mem_populated = false;
+
+//The constant memory constains ENTRY_SIZE, MAX_NUM_CHILDREN, ENTRIES_PER_NODE and MAX_NGRAM. They don't change throughout kernel execution
+__constant__ unsigned int lm_parameters[4];
+#define ENTRY_SIZE lm_parameters[0]  //16
+#define MAX_NUM_CHILDREN lm_parameters[1]  //128
+#define ENTRIES_PER_NODE lm_parameters[2]  //127
+#define MAX_NGRAM lm_parameters[3]  //5
 
 //We want to copy a whole BTree node to shared memory. We will know the size in advance, we need to distribute the copying between
 //our threads. We might end up copying more than we need, but that is fine, as long as we avoid warp divergence.
-__global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, float * results,
-    unsigned int entry_size, unsigned int max_num_children, unsigned int entries_per_node, unsigned int max_ngram){
+__global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, float * results) {
 
     unsigned int * offsets = shared_mem; //Reads in the first child offset + the shorts
-    unsigned int * entries = &shared_mem[max_num_children/2 +1];
-    unsigned int * prefix_sum = &entries[entries_per_node]; //Prefix sum gives us next node size
+    unsigned int * entries = &shared_mem[MAX_NUM_CHILDREN/2 +1];
+    unsigned int * prefix_sum = &entries[ENTRIES_PER_NODE]; //Prefix sum gives us next node size
     unsigned int * found_idx = &prefix_sum[1];
     unsigned int * booleans = &found_idx[1]; //booleans[0] = is_last; booleans[1] = exact_match
     unsigned int * payload = &booleans[2];   //After we find the correct entry, load the payload here
@@ -28,8 +36,8 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
 
     //Maybe we need to issue shared memory here to optimize it
     int i = threadIdx.x;
-    if (i < max_ngram) {
-       keys_shared[i] = keys[(blockIdx.x*max_ngram) + i]; //Shared memory read here for up NUM_NGRAM keys 
+    if (i < MAX_NGRAM) {
+       keys_shared[i] = keys[(blockIdx.x*MAX_NGRAM) + i]; //Shared memory read here for up NUM_NGRAM keys 
     }
     __syncthreads();
     //if (i == 0) { //Maybe necessary to prevent OutOfBounds reading on the shared memory
@@ -59,7 +67,7 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
     unsigned int current_btree_start = 0;
     unsigned int current_ngram = 0;
     unsigned int key = keys_shared[current_ngram];
-    while (key != 0 && current_ngram < max_ngram) {
+    while (key != 0 && current_ngram < MAX_NGRAM) {
         current_ngram++;
         unsigned int updated_idx = current_btree_start + 4; //Update the index for the while loop
         unsigned int size = *(unsigned int *)&global_mem[current_btree_start];; //The size of the current node to process. @TODO This causes misaligned memory
@@ -75,8 +83,8 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
             //First warp divergence here. We are reading in from global memory
             if (i == 0) {
                 //@TODO: Replace this with a mod check
-                int cur_node_entries = (size - sizeof(unsigned int) - sizeof(unsigned short))/(entry_size + sizeof(unsigned short));
-                *is_last = !(entries_per_node == cur_node_entries);
+                int cur_node_entries = (size - sizeof(unsigned int) - sizeof(unsigned short))/(ENTRY_SIZE + sizeof(unsigned short));
+                *is_last = !(ENTRIES_PER_NODE == cur_node_entries);
                 //@TODO. Fix this to be more efficient. Maybe move it with entries?
                 //As per cuda memory model at least one write will succeed. We are clearing this value
                 //So it doesn't interfere with the future values
@@ -87,21 +95,21 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
 
             if (*is_last) {
                 //The number of entries in the bottom most nodes may be smaller than the size
-                num_entries = size/entry_size;
+                num_entries = size/ENTRY_SIZE;
                 if (i < num_entries) {
                     entries[i] = *(unsigned int *)(&global_mem[updated_idx + i*sizeof(unsigned int)]);
                     //printf("Entries i: %d, value %d\n", i, entries[i]);
                 }
                 //printf("Num entries: %d size: %d\n", num_entries, size);
             } else {
-                num_entries = entries_per_node;
+                num_entries = ENTRIES_PER_NODE;
                 //Load the unsigned int start offset together with the accumulated offsets to avoid warp divergence
-                if (i < (max_num_children/2) + 1) {
+                if (i < (MAX_NUM_CHILDREN/2) + 1) {
                     offsets[i] = *(unsigned int *)(&global_mem[updated_idx + i*sizeof(unsigned int)]);
                 }
                 //Now load the entries
                 if (i < num_entries) {
-                    entries[i] = *(unsigned int *)(&global_mem[updated_idx + sizeof(unsigned int) + max_num_children*sizeof(unsigned short) + i*sizeof(unsigned int)]);
+                    entries[i] = *(unsigned int *)(&global_mem[updated_idx + sizeof(unsigned int) + MAX_NUM_CHILDREN*sizeof(unsigned short) + i*sizeof(unsigned int)]);
                 }
             }
             __syncthreads();
@@ -154,7 +162,7 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
                 //The last node that we found's probability should be in shared memory
                 backoff_notriecont:
                 if (get_backoff) {
-                    current_ngram = max_ngram;
+                    current_ngram = MAX_NGRAM;
                     break; //If we didn't find a backoff, the value is zero; //We should go to end now, because any further backoffs
                     // will be missing from the trie
                 } else {
@@ -178,7 +186,7 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
                             + *found_idx*(sizeof(unsigned int) + sizeof(float) + sizeof(float)) //Skip the previous keys' payload
                                 + i*sizeof(unsigned int)]); //Get next_level/prob/backoff
                     } else {
-                        payload[i] = *(unsigned int *)(&global_mem[updated_idx + sizeof(unsigned int) + max_num_children*sizeof(unsigned short) //Skip the offsets and first offset
+                        payload[i] = *(unsigned int *)(&global_mem[updated_idx + sizeof(unsigned int) + MAX_NUM_CHILDREN*sizeof(unsigned short) //Skip the offsets and first offset
                             + num_entries*sizeof(unsigned int) //Skip the keys
                                 + *found_idx*(sizeof(unsigned int) + sizeof(float) + sizeof(float)) //Skip the previous keys' payload
                                     + i*sizeof(unsigned int)]);  //Get next_level/prob/backoff
@@ -191,7 +199,7 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
                 //    goto unktoken; //If we have invalid "next_level" it's going to be indexed 0. True for unk
                 //}
                 __syncthreads();
-                if (current_ngram < max_ngram && key != 0) {
+                if (current_ngram < MAX_NGRAM && key != 0) {
                     current_btree_start = *next_level; //@TODO maybe we need to sync here as well
                     if (current_btree_start == 0) {
                         //STOP. We are in the case of a trie that doesn't continue further. In this case we should basically
@@ -234,12 +242,19 @@ void searchWrapper(unsigned char * global_mem, unsigned int * keys, unsigned int
     unsigned int max_num_children = entries_per_node + 1;
     unsigned int shared_memory_size = (max_num_children/2 + 1 + entries_per_node + 1 + 1 + 2 + 3 + max_ngram)*sizeof(unsigned int);
 
+    //Populate constant memory
+    unsigned int const_mem_host[4] = {entry_size, max_num_children, entries_per_node, max_ngram};
+    //if (!constant_mem_populated) {
+        CHECK_CALL(cudaMemcpyToSymbol(lm_parameters, const_mem_host, 4*sizeof(unsigned int)));
+    //    constant_mem_populated = true;
+    //}
+
+    //Time the kernel execution
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
     cudaEventRecord(start);
-    gpuSearchBtree<<<num_ngram_queries, max_num_children, shared_memory_size>>>(global_mem, keys, results, entry_size,
-        max_num_children, entries_per_node, max_ngram);
+    gpuSearchBtree<<<num_ngram_queries, max_num_children, shared_memory_size>>>(global_mem, keys, results);
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
     float milliseconds = 0;
