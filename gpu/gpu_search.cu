@@ -2,30 +2,18 @@
 #include <cuda_runtime.h>
 #include <gpu_common.h>
 
-extern __shared__ unsigned int shared_mem[];
-
 //We want to copy a whole BTree node to shared memory. We will know the size in advance, we need to distribute the copying between
 //our threads. We might end up copying more than we need, but that is fine, as long as we avoid warp divergence.
 template<unsigned int entry_size, unsigned int max_num_children, unsigned int entries_per_node, unsigned int max_ngram>
 __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, float * results) {
 
-    unsigned int * offsets = shared_mem; //Reads in the first child offset + the shorts
-    unsigned int * entries = &shared_mem[max_num_children/2 +1];
-    unsigned int * prefix_sum = &entries[entries_per_node]; //Prefix sum gives us next node size
-    unsigned int * found_idx = &prefix_sum[1];
-    unsigned int * booleans = &found_idx[1]; //booleans[0] = is_last; booleans[1] = exact_match
-    unsigned int * payload = &booleans[2];   //After we find the correct entry, load the payload here
-    unsigned int * keys_shared = &payload[3]; //Each block fetches from shared memory the max necessary number of keys
-    
-    /*Since it's a bit hard to read the above shared memory alocations, so here's the static shared memory version
     __shared__ unsigned int offsets[max_num_children/2 +1]; //Reads in the first child offset + the shorts
     __shared__ unsigned int entries[entries_per_node];
     __shared__ unsigned int prefix_sum; //Prefix sum gives us next node size
     __shared__ unsigned int found_idx;
     __shared__ unsigned int booleans[2]; //booleans[0] = is_last; booleans[1] = exact_match
     __shared__ unsigned int payload[3]; //After we find the correct entry, load the payload here
-    __shared__ unsigned int keys_shared[MAX_NGRAM]; //Each block fetches from shared memory the max necessary number of keys
-    */
+    __shared__ unsigned int keys_shared[max_ngram]; //Each block fetches from shared memory the max necessary number of keys
 
     //Maybe we need to issue shared memory here to optimize it
     int i = threadIdx.x;
@@ -48,8 +36,6 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
     unsigned int * next_level = &payload[0];
     float * prob = (float *)&payload[1];
     float * backoff = (float *)&payload[2];
-
-    int num_entries; //Set the number of entries per node depending on whether we are internal or leaf.
 
     //Backoff variables
     unsigned int match_length_found = 0; //To check what was our longest match so we know what to backoff to
@@ -81,11 +67,11 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
                 //@TODO. Fix this to be more efficient. Maybe move it with entries?
                 //As per cuda memory model at least one write will succeed. We are clearing this value
                 //So it doesn't interfere with the future values
-                *prefix_sum = 0;
+                prefix_sum = 0;
             }
             __syncthreads();
 
-
+            int num_entries; //Set the number of entries per node depending on whether we are internal or leaf.
             if (*is_last) {
                 //The number of entries in the bottom most nodes may be smaller than the size
                 num_entries = size/entry_size;
@@ -110,14 +96,14 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
             //NOW search
             if (i == 0) {
                 if (key <= entries[i]) {
-                    *found_idx = i;
+                    found_idx = i;
                     if (key == entries[i]) {
                         *exact_match = true;
                     }
                 }
             } else if (i < num_entries) {
                 if (key > entries[i-1] && key <= entries[i]){
-                    *found_idx = i;
+                    found_idx = i;
                     if (key == entries[i]) {
                         *exact_match = true;
                     }
@@ -125,7 +111,7 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
             } else if (i == num_entries) {
                 //Case where our key is greater than the last available entry. We need to do a prefix sum of i+1 elements.
                 if (key > entries[i-1]) {
-                    *found_idx = i;
+                    found_idx = i;
                 }
             }
             __syncthreads();
@@ -134,14 +120,14 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
             if (!*exact_match && !*is_last) {
                 //Do a prefix sum on the offsets here
                 //@TODO optimize later. Do a proper prefix sum rather than atomic add
-                if (i < *found_idx) {
-                   atomicAdd(prefix_sum, (unsigned int)offests_incremental[i]);
+                if (i < found_idx) {
+                   atomicAdd(&prefix_sum, (unsigned int)offests_incremental[i]);
                 }
                 __syncthreads(); //This is not necessary? It is necssary because the threads that don't take the if
                 //path may write to the updated idx
                 //As per the cuda memory model at least one write will succeed. since they all write the same we don't care
-                size = (unsigned int)offests_incremental[*found_idx];
-                updated_idx = *first_child_offset + *prefix_sum + current_btree_start; //*first_child_offset + prefix_sum only gives score since beginning
+                size = (unsigned int)offests_incremental[found_idx];
+                updated_idx = *first_child_offset + prefix_sum + current_btree_start; //*first_child_offset + prefix_sum only gives score since beginning
                                                                                     // of this btree. If we want index from the byte_arr start we need to add
                                                                                     // current_btree_start
                 __syncthreads(); //Data hazard fix on size
@@ -173,12 +159,12 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
                     //After the offsets and the keys, so we skip them and then we skip to the correct payload using found_idx
                     if (*is_last) {
                         payload[i] = *(unsigned int *)(&global_mem[updated_idx + num_entries*sizeof(unsigned int) //Skip the keys
-                            + *found_idx*(sizeof(unsigned int) + sizeof(float) + sizeof(float)) //Skip the previous keys' payload
+                            + found_idx*(sizeof(unsigned int) + sizeof(float) + sizeof(float)) //Skip the previous keys' payload
                                 + i*sizeof(unsigned int)]); //Get next_level/prob/backoff
                     } else {
                         payload[i] = *(unsigned int *)(&global_mem[updated_idx + sizeof(unsigned int) + max_num_children*sizeof(unsigned short) //Skip the offsets and first offset
                             + num_entries*sizeof(unsigned int) //Skip the keys
-                                + *found_idx*(sizeof(unsigned int) + sizeof(float) + sizeof(float)) //Skip the previous keys' payload
+                                + found_idx*(sizeof(unsigned int) + sizeof(float) + sizeof(float)) //Skip the previous keys' payload
                                     + i*sizeof(unsigned int)]);  //Get next_level/prob/backoff
                     }
                 }
@@ -216,7 +202,12 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
     }
 }
 
-//Instantiate templates for known things:
+/*
+We have to do this to provide some degree of flexibility, whilst maintaining performance
+http://stackoverflow.com/questions/32534371/cuda-most-efficient-way-to-store-constants-that-need-to-be-parsed-as-arguments?noredirect=1#comment52933276_32534371
+http://stackoverflow.com/questions/6179295/if-statement-inside-a-cuda-kernel/6179580#6179580
+http://stackoverflow.com/questions/31569401/fastest-or-most-elegant-way-of-passing-constant-arguments-to-a-cuda-kernel?rq=1
+Instantiate templates for known things:*/
 template __global__ void gpuSearchBtree<16, 512, 511, 1>(unsigned char * global_mem, unsigned int * keys, float * results);
 template __global__ void gpuSearchBtree<16, 512, 511, 2>(unsigned char * global_mem, unsigned int * keys, float * results);
 template __global__ void gpuSearchBtree<16, 512, 511, 3>(unsigned char * global_mem, unsigned int * keys, float * results);
@@ -262,31 +253,58 @@ template __global__ void gpuSearchBtree<16, 32, 31, 6>(unsigned char * global_me
 template __global__ void gpuSearchBtree<16, 32, 31, 7>(unsigned char * global_mem, unsigned int * keys, float * results);
 template __global__ void gpuSearchBtree<16, 32, 31, 8>(unsigned char * global_mem, unsigned int * keys, float * results);
 
-template __global__ void gpuSearchBtree<16, 8, 7, 1>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 8, 7, 2>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 8, 7, 3>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 8, 7, 4>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 8, 7, 5>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 8, 7, 6>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 8, 7, 7>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 8, 7, 8>(unsigned char * global_mem, unsigned int * keys, float * results);
+template __global__ void gpuSearchBtree<16, 8, 127, 1>(unsigned char * global_mem, unsigned int * keys, float * results);
+template __global__ void gpuSearchBtree<16, 8, 127, 2>(unsigned char * global_mem, unsigned int * keys, float * results);
+template __global__ void gpuSearchBtree<16, 8, 127, 3>(unsigned char * global_mem, unsigned int * keys, float * results);
+template __global__ void gpuSearchBtree<16, 8, 127, 4>(unsigned char * global_mem, unsigned int * keys, float * results);
+template __global__ void gpuSearchBtree<16, 8, 127, 5>(unsigned char * global_mem, unsigned int * keys, float * results);
+template __global__ void gpuSearchBtree<16, 8, 127, 6>(unsigned char * global_mem, unsigned int * keys, float * results);
+template __global__ void gpuSearchBtree<16, 8, 127, 7>(unsigned char * global_mem, unsigned int * keys, float * results);
+template __global__ void gpuSearchBtree<16, 8, 127, 8>(unsigned char * global_mem, unsigned int * keys, float * results);
 
 //num_keys is the number of blocks we are going to launch. It is actually the number of ngrams queries
 void searchWrapper(unsigned char * global_mem, unsigned int * keys, unsigned int num_ngram_queries, float * results,
     unsigned int entries_per_node, unsigned int entry_size, unsigned int max_ngram) {
 
     unsigned int max_num_children = entries_per_node + 1;
-    unsigned int shared_memory_size = (max_num_children/2 + 1 + entries_per_node + 1 + 1 + 2 + 3 + max_ngram)*sizeof(unsigned int);
 
     //Time the kernel execution
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
-    cudaEventRecord(start);
-    //gpuSearchBtree<entry_size, max_num_children, entries_per_node, max_ngram><<<num_ngram_queries, max_num_children, shared_memory_size>>>(global_mem, keys, results);
-    gpuSearchBtree<16, 128, 127, 5><<<num_ngram_queries, max_num_children, shared_memory_size>>>(global_mem, keys, results);
-    cudaEventRecord(stop);
-    cudaEventSynchronize(stop);
+
+    if (entries_per_node == 31) {
+        cudaEventRecord(start);
+        gpuSearchBtree<16, 32, 31, 5><<<num_ngram_queries, max_num_children>>>(global_mem, keys, results);
+        cudaEventRecord(stop);
+        cudaEventSynchronize(stop);
+    } else if (entries_per_node == 63) {
+        cudaEventRecord(start);
+        gpuSearchBtree<16, 64, 63, 5><<<num_ngram_queries, max_num_children>>>(global_mem, keys, results);
+        cudaEventRecord(stop);
+        cudaEventSynchronize(stop);
+    } else if (entries_per_node == 127) {
+        cudaEventRecord(start);
+        gpuSearchBtree<16, 128, 127, 5><<<num_ngram_queries, max_num_children>>>(global_mem, keys, results);
+        cudaEventRecord(stop);
+        cudaEventSynchronize(stop);
+    } else if (entries_per_node == 255) {
+        cudaEventRecord(start);
+        gpuSearchBtree<16, 256, 255, 5><<<num_ngram_queries, max_num_children>>>(global_mem, keys, results);
+        cudaEventRecord(stop);
+        cudaEventSynchronize(stop);
+    } else if (entries_per_node == 511) {
+        cudaEventRecord(start);
+        gpuSearchBtree<16, 512, 511, 5><<<num_ngram_queries, max_num_children>>>(global_mem, keys, results);
+        cudaEventRecord(stop);
+        cudaEventSynchronize(stop);
+    } else if (entries_per_node == 7) {
+        cudaEventRecord(start);
+        gpuSearchBtree<16, 8, 7, 5><<<num_ngram_queries, max_num_children>>>(global_mem, keys, results);
+        cudaEventRecord(stop);
+        cudaEventSynchronize(stop);
+    }
+
     float milliseconds = 0;
     cudaEventElapsedTime(&milliseconds, start, stop);
     printf("Searched for %d ngrams in: %f milliseconds.\n", num_ngram_queries, milliseconds);
