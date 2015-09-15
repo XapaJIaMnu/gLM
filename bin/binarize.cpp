@@ -3,7 +3,7 @@
 #include "gpu_search.hh"
 
 int main(int argc, char* argv[]){
-    if (argc != 5 && argc != 3) {
+    if (argc != 5 && argc != 3 && argc != 4) {
         std::cerr << "Usage:" << std::endl << argv[0] << " path_to_arpa_file output_path [btree_node_size CompactFormat]." << std::endl;
         std::exit(EXIT_FAILURE);
     }
@@ -12,9 +12,9 @@ int main(int argc, char* argv[]){
 
     if (argc == 5) {
         btree_node_size = atoi(argv[3]);
-        CompactFormat = atoi(argv[3]);
-    } else {
-        
+        CompactFormat = atoi(argv[4]);
+    } else if (argc == 4) {
+        btree_node_size = atoi(argv[3]);
     }
     //Create the LM
     LM lm;
