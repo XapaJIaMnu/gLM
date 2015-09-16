@@ -202,66 +202,6 @@ __global__ void gpuSearchBtree(unsigned char * global_mem, unsigned int * keys, 
     }
 }
 
-/*
-We have to do this to provide some degree of flexibility, whilst maintaining performance
-http://stackoverflow.com/questions/32534371/cuda-most-efficient-way-to-store-constants-that-need-to-be-parsed-as-arguments?noredirect=1#comment52933276_32534371
-http://stackoverflow.com/questions/6179295/if-statement-inside-a-cuda-kernel/6179580#6179580
-http://stackoverflow.com/questions/31569401/fastest-or-most-elegant-way-of-passing-constant-arguments-to-a-cuda-kernel?rq=1
-Instantiate templates for known things:*/
-template __global__ void gpuSearchBtree<16, 512, 511, 1>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 512, 511, 2>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 512, 511, 3>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 512, 511, 4>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 512, 511, 5>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 512, 511, 6>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 512, 511, 7>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 512, 511, 8>(unsigned char * global_mem, unsigned int * keys, float * results);
-
-template __global__ void gpuSearchBtree<16, 256, 255, 1>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 256, 255, 2>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 256, 255, 3>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 256, 255, 4>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 256, 255, 5>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 256, 255, 6>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 256, 255, 7>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 256, 255, 8>(unsigned char * global_mem, unsigned int * keys, float * results);
-
-template __global__ void gpuSearchBtree<16, 128, 127, 1>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 128, 127, 2>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 128, 127, 3>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 128, 127, 4>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 128, 127, 5>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 128, 127, 6>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 128, 127, 7>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 128, 127, 8>(unsigned char * global_mem, unsigned int * keys, float * results);
-
-template __global__ void gpuSearchBtree<16, 64, 63, 1>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 64, 63, 2>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 64, 63, 3>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 64, 63, 4>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 64, 63, 5>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 64, 63, 6>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 64, 63, 7>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 64, 63, 8>(unsigned char * global_mem, unsigned int * keys, float * results);
-
-template __global__ void gpuSearchBtree<16, 32, 31, 1>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 32, 31, 2>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 32, 31, 3>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 32, 31, 4>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 32, 31, 5>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 32, 31, 6>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 32, 31, 7>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 32, 31, 8>(unsigned char * global_mem, unsigned int * keys, float * results);
-
-template __global__ void gpuSearchBtree<16, 8, 127, 1>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 8, 127, 2>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 8, 127, 3>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 8, 127, 4>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 8, 127, 5>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 8, 127, 6>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 8, 127, 7>(unsigned char * global_mem, unsigned int * keys, float * results);
-template __global__ void gpuSearchBtree<16, 8, 127, 8>(unsigned char * global_mem, unsigned int * keys, float * results);
-
 //num_keys is the number of blocks we are going to launch. It is actually the number of ngrams queries
 void searchWrapper(unsigned char * global_mem, unsigned int * keys, unsigned int num_ngram_queries, float * results,
     unsigned int entries_per_node, unsigned int entry_size, unsigned int max_ngram) {
@@ -272,8 +212,30 @@ void searchWrapper(unsigned char * global_mem, unsigned int * keys, unsigned int
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
-
-    if (entries_per_node == 31) {
+    
+    /*
+    We have to do this to provide some degree of flexibility, whilst maintaining performance
+    http://stackoverflow.com/questions/32534371/cuda-most-efficient-way-to-store-constants-that-need-to-be-parsed-as-arguments?noredirect=1#comment52933276_32534371
+    http://stackoverflow.com/questions/6179295/if-statement-inside-a-cuda-kernel/6179580#6179580
+    http://stackoverflow.com/questions/31569401/fastest-or-most-elegant-way-of-passing-constant-arguments-to-a-cuda-kernel?rq=1
+    Instantiate templates for known things:
+    */
+    if (entries_per_node == 3) {
+        cudaEventRecord(start);
+        gpuSearchBtree<16, 4, 3, 5><<<num_ngram_queries, max_num_children>>>(global_mem, keys, results);
+        cudaEventRecord(stop);
+        cudaEventSynchronize(stop);
+    } else if (entries_per_node == 7) {
+        cudaEventRecord(start);
+        gpuSearchBtree<16, 8, 7, 5><<<num_ngram_queries, max_num_children>>>(global_mem, keys, results);
+        cudaEventRecord(stop);
+        cudaEventSynchronize(stop);
+    } else if (entries_per_node == 15) {
+        cudaEventRecord(start);
+        gpuSearchBtree<16, 16, 15, 5><<<num_ngram_queries, max_num_children>>>(global_mem, keys, results);
+        cudaEventRecord(stop);
+        cudaEventSynchronize(stop);
+    } else if (entries_per_node == 31) {
         cudaEventRecord(start);
         gpuSearchBtree<16, 32, 31, 5><<<num_ngram_queries, max_num_children>>>(global_mem, keys, results);
         cudaEventRecord(stop);
@@ -296,11 +258,6 @@ void searchWrapper(unsigned char * global_mem, unsigned int * keys, unsigned int
     } else if (entries_per_node == 511) {
         cudaEventRecord(start);
         gpuSearchBtree<16, 512, 511, 5><<<num_ngram_queries, max_num_children>>>(global_mem, keys, results);
-        cudaEventRecord(stop);
-        cudaEventSynchronize(stop);
-    } else if (entries_per_node == 7) {
-        cudaEventRecord(start);
-        gpuSearchBtree<16, 8, 7, 5><<<num_ngram_queries, max_num_children>>>(global_mem, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     }
