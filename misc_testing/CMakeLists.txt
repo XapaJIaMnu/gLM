@@ -4,6 +4,7 @@ find_package(BZip2 REQUIRED)
 add_executable(btree_test btree_test.cpp)
 add_executable(tokenize_test tokenize_tests.cpp)
 add_executable(trie_test trie_test.cpp)
+add_executable(btree_drawer btree_drawer.cpp)
 
 add_executable(cuda_test cuda_test.cpp)
 target_link_libraries(cuda_test
