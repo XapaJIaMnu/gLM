@@ -33,7 +33,7 @@ This will calculate the perplexity of a text file. If *add_begin_end_markers* is
 So... Everything started running correctly. A (preliminary) benchmark against KenLM (Titan X vs core i7 4720HQ)
 
 | LM  | ngram queries per second | model info          |
-|.....|:........................:| -------------------:|
+|-----|:------------------------:| -------------------:|
 |KenLM| 10 274 237               |3.3G, 88720517 ngrams|
 |gLM  | 34 011 267               |3.3G, 88720517 ngrams|
 
