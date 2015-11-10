@@ -5,13 +5,18 @@
 #include <ctime>
 
 int main(int argc, char* argv[]){
-    if (argc != 4 && argc != 3) {
-        std::cerr << "Usage:" << std::endl << argv[0] << " path_to_binary_lm_dir path_to_test_file [addBeginEndMarkers_bool]" << std::endl;
+    if (argc !=5 && argc != 4 && argc != 3) {
+        std::cerr << "Usage:" << std::endl << argv[0] << " path_to_binary_lm_dir path_to_test_file [gpuDeviceID=0] [addBeginEndMarkers_bool=1]" << std::endl;
         std::exit(EXIT_FAILURE);
     }
     bool addBeginEndMarkers = true;
     if (argc == 4) {
-        addBeginEndMarkers = atoi(argv[3]);
+        setGPUDevice(atoi(argv[3]));
+    }
+
+    if (argc == 5) {
+    	setGPUDevice(atoi(argv[3]));
+    	addBeginEndMarkers = atoi(argv[4]);
     }
     std::chrono::time_point<std::chrono::system_clock> start, readBinaryLM, memcpyBytearrayStart, memcpyBytearray,
         queryFileIOstart, queryFileIOend, gpuPrepareStart, gpuPrepareEnd, copyBackStart, copyBackEnd, memFreeStart, memFreeEnd;

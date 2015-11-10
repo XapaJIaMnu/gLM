@@ -15,7 +15,7 @@ make test #Requires CUDA for GPU testing
 ## Binarize arpa files
 ```bash
 cd path_to_glm/release_build/bin
-./binarize path_to_arpa_file output_path [btree_node_size] [[CompactMode]]
+./binarize path_to_arpa_file output_path [btree_node_size] [CompactMode]
 ```
 *btree_node_size* should be an odd number. Personally I found that 31 works best, but you should experiment. The number could vary with different size arpa files and different GPUs
 
@@ -25,9 +25,9 @@ If *compactMode* is not set, or is set to *0* gLM will use memory mapped IO for 
 To benchmark gLM in batch setting do:
 ```bash
 cd path_to_glm/release_build/bin
-./batch_query path_to_binary_lm path_to_text_file [add_begin_end_markers]
+./batch_query path_to_binary_lm path_to_text_file [gpuDeviceID] [add_begin_end_markers]
 ```
-This will calculate the perplexity of a text file. If *add_begin_end_markers* is set to 0, the begin of sentence and end of sentence tokens (<s> and </s>) will not surround every sentence.
+This will calculate the perplexity of a text file. If *gpuDeviceID* is set, it will tell the gpu portion of the code to be executed on a particular GPU. You can check the available gpus on a system using the `nvidia_smi` command. 0 is a safe default to have if you want to set it. If *add_begin_end_markers* is set to 0, the begin of sentence and end of sentence tokens (\<s\> and \</s\>) will not surround every sentence.
 
 ## Preliminary results
 So... Everything started running correctly. A (preliminary) benchmark against KenLM (Titan X vs core i7 4720HQ)

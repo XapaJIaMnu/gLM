@@ -270,3 +270,8 @@ void searchWrapper(unsigned char * global_mem, unsigned int * keys, unsigned int
 void cudaDevSync() {
     cudaDeviceSynchronize();
 }
+
+/*Tells the code to execute on a particular device. Useful on multiGPU systems*/
+void setGPUDevice(int deviceID) {
+    CHECK_CALL(cudaSetDevice(deviceID));
+}
