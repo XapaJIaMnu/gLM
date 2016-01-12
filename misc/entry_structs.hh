@@ -1,5 +1,11 @@
 class B_tree; //Forward declaration
 
+struct Entry_v2 {
+    unsigned int vocabID;
+    float prob;
+    float backoff;
+};
+
 struct Entry {
     unsigned int value;
     B_tree * next_level;
