@@ -67,37 +67,25 @@ void array2balancedBtree(std::vector<unsigned char> &byte_arr, std::vector<Entry
             }
             future_nodes.pop_front(); //Remove the node that we are currently processing from the queue
 
-            //Choose elements to put into the first node.
-            //@TODO handle the case where BtreeNodeSize < cur_array.size() < 2*BtreeNodeSize
-            int choiceForRoot = (int)ceil(((float)cur_array.size())/(BtreeNodeSize+1));
+            //Choose elements to put into the node.
+            std::vector<unsigned int> splits = createEvenSplits(cur_array.size(), BtreeNodeSize);
 
             std::vector<Entry_v2> entries_to_insert;
             entries_to_insert.reserve(BtreeNodeSize);
-
-            std::vector<Entry_v2> children;
-            for (unsigned int i = 0; i < cur_array.size(); i++) {
-                //Put Entries in the proper lists
-                if (((i % choiceForRoot == 0) && (i != 0))
-                    //The or condition is supposed to add a final element to the node in cases where we have too little elements
-                    //to split. This usually happens if the next nodes are going to be leaves.
-                    || ((i == cur_array.size() - 1) && !(i % choiceForRoot == 0) && entries_to_insert.size() < BtreeNodeSize)) {
-                    entries_to_insert.push_back(cur_array[i]);
-
-                    //So far we have gathered the left children the node which is going to be constructed 
-                    //From entries_to_insert. Now we put them into the processing queue
-                    future_nodes.push_back(children);
-                    offsets.push_back(futureSizeCalculator(children.size(), BtreeNodeSize, payload_size));
-                    children.clear();
-                } else {
-                    children.push_back(cur_array[i]);
-                }
-
-            }
-            //Take care of the last children:
-            if (children.size() != 0) {
+            
+            unsigned int accumulated_entry_number = 0; //Keeps track of which entries from the array we need to access
+            for (auto split : splits) {
+                std::vector<Entry_v2> children;
+                children.resize(split);
+                std::memcpy(&children[0], &cur_array[0 + accumulated_entry_number], split*sizeof(children[0]));
                 future_nodes.push_back(children);
-                offsets.push_back(futureSizeCalculator(children.size(), BtreeNodeSize, payload_size));
-                children.clear();
+                accumulated_entry_number += split;
+
+                //This is necessary to prevent adding to entries_to_insert
+                if (accumulated_entry_number < cur_array.size()) {
+                    entries_to_insert.push_back(cur_array[accumulated_entry_number]);
+                    accumulated_entry_number++;
+                }
             }
 
             assert(entries_to_insert.size() == BtreeNodeSize); //Something's wrong with the algorithm otherwise.
@@ -172,5 +160,40 @@ void entry_v2_to_node(std::vector<unsigned char> &byte_arr, std::vector<Entry_v2
     }
 
     std::memcpy(&byte_arr[cur_byte_arr_idx], &payloads[0], payload_size*entries.size()); //Copy the payloads
+
+}
+
+//Idea: if we have BtreeNodeSize, we want BtreeNodeSize+1 almost equal children.
+//To do that we get remainder elements and we split them into even groups.
+std::vector<unsigned int> createEvenSplits(unsigned int array_size, unsigned short BtreeNodeSize) {
+    std::vector<unsigned int> equal_parts;
+    equal_parts.reserve(BtreeNodeSize + 1);
+
+    if (array_size > 2*BtreeNodeSize) {
+        unsigned int remaining_elements = (array_size - BtreeNodeSize); //The elements minus the ones that will go to the node
+        unsigned int equal_parts_size = remaining_elements/(BtreeNodeSize + 1);
+        unsigned int equal_remainders = remaining_elements % (BtreeNodeSize + 1);
+
+        for (unsigned int i = 0; i < BtreeNodeSize + 1; i++) {
+            if (equal_remainders > 0) {
+                equal_parts.push_back(equal_parts_size + 1); //Take out from the remainder
+                equal_remainders--;
+            } else {
+                equal_parts.push_back(equal_parts_size);
+            }
+        }
+    } else {
+        //In order for this algorithm to work we need array_size > 2*BtreeNodeSize
+        //If however we have BtreeNodeSize < array_size <= 2*BtreeNodeSize we will just take
+        //the first n elements for the current node, and stick the rest at the end to one leaf node
+        //To achieve this with our algorithm the return vector will contain 0 for the first n elements
+        //and array_size - BtreeNodeSize for the final one.
+        equal_parts.resize(BtreeNodeSize);
+        memset(&equal_parts[0], 0, BtreeNodeSize*sizeof(equal_parts[0]));
+        equal_parts.push_back(array_size - BtreeNodeSize);
+    }
+    
+
+    return equal_parts;
 
 }
