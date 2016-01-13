@@ -73,6 +73,58 @@ bool operator!= (const Entry &left, const unsigned int &right) {
     return (left.value != right);
 }
 
+bool operator> (const Entry_v2 &left, const Entry_v2 &right) {
+    return (left.vocabID > right.vocabID);
+}
+
+bool operator< (const Entry_v2 &left, const Entry_v2 &right) {
+    return (left.vocabID < right.vocabID);
+}
+
+bool operator== (const Entry_v2 &left, const Entry_v2 &right) {
+    return (left.vocabID == right.vocabID);
+}
+
+bool operator!= (const Entry_v2 &left, const Entry_v2 &right) {
+    return (left.vocabID != right.vocabID);
+}
+
+//With a number
+bool operator> (const unsigned int &left, const Entry_v2 &right) {
+    return (left > right.vocabID);
+}
+
+bool operator< (const unsigned int &left, const Entry_v2 &right) {
+    return (left < right.vocabID);
+}
+
+bool operator== (const unsigned int &left, const Entry_v2 &right) {
+    return (left == right.vocabID);
+}
+
+bool operator!= (const unsigned int &left, const Entry_v2 &right) {
+    return (left != right.vocabID);
+}
+
+//The other way, for convenience
+
+bool operator> (const Entry_v2 &left, const unsigned int &right) {
+    return (left.vocabID > right);
+}
+
+bool operator< (const Entry_v2 &left, const unsigned int &right) {
+    return (left.vocabID < right);
+}
+
+bool operator== (const Entry_v2 &left, const unsigned int &right) {
+    return (left.vocabID == right);
+}
+
+bool operator!= (const Entry_v2 &left, const unsigned int &right) {
+    return (left.vocabID != right);
+}
+
+
 unsigned char getEntrySize(bool pointer2Index = false) {
     /*This function returns the size of all individual components of the struct.
     It is necessary because we store either the B_tree * next_level or the offset, never both*/
