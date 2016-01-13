@@ -20,7 +20,8 @@ void array2balancedBtree(std::vector<unsigned char> &byte_arr, std::vector<Entry
       To get offsetToChild2, one needs to add OffsetToChild1 to the current start offset and add to that OffsetToChild2. To get the size one needs
       to subtract OffsetToChild2 from OffsetToChild3 and so on. Since the optimal number of childre is 32 and we won't be having too many more
       than that it is feasible to fit the offsets in unsigned shorts. Since all sizes are multiple of fours (only odd BTreeNodeSizes allowed).
-      The first BTree node has extra 4 bytes at the beginning (unsigned int) in order to tell the size of the root node.
+      and first BTree node has extra 4 bytes at the beginning (unsigned int) in order to tell the size of the root node. The first child offset,
+      as well as the offsets to consecutive trie levels need to be multiplied by four to get the correct locations.
 
       Size of BTree node (in bytes) 4*BTreeNodeSize + 4 + 4*BtreeNodeSize/2 + 4*BtreeNodeSize*12
       If it is last level of Trie the size is: 4*BTreeNodeSize + 4 + 4*BtreeNodeSize/2 + 4*BtreeNodeSize*4, because there's no next_level offset
@@ -47,12 +48,14 @@ void array2balancedBtree(std::vector<unsigned char> &byte_arr, std::vector<Entry
     std::memcpy(&byte_arr[byte_arr.size() - 4], &root_size, sizeof(root_size));
 
     //Set up for a while loop
-    std::vector<unsigned int> offsets;
     std::deque<std::vector<Entry_v2> > future_nodes;
     future_nodes.push_back(array); //@TODO clear memory here.
 
     while (!future_nodes.empty()) {
         std::vector<Entry_v2> cur_array = future_nodes.front();
+        //Initialize offsets vector
+        std::vector<unsigned int> offsets;
+        offsets.reserve(BtreeNodeSize + 2);
 
         if (cur_array.size() <= BtreeNodeSize) {
             entry_v2_to_node(byte_arr, cur_array, offsets, payload_size);
@@ -61,10 +64,12 @@ void array2balancedBtree(std::vector<unsigned char> &byte_arr, std::vector<Entry
 
             //Calculate first child offset here
             offsets.push_back(0); //Initial value for future offsets
-            //@TODO this should be divided by 4.
             for (auto future_node : future_nodes) {
                 offsets[0] += futureSizeCalculator(future_node.size(), BtreeNodeSize, payload_size);
             }
+            assert(offsets[0] % 4 == 0); //Verify that we indeed have an address divisible by 4.
+            offsets[0] = offsets[0]/4;
+
             future_nodes.pop_front(); //Remove the node that we are currently processing from the queue
 
             //Choose elements to put into the node.
@@ -75,13 +80,20 @@ void array2balancedBtree(std::vector<unsigned char> &byte_arr, std::vector<Entry
             
             unsigned int accumulated_entry_number = 0; //Keeps track of which entries from the array we need to access
             for (auto split : splits) {
-                std::vector<Entry_v2> children;
+                std::vector<Entry_v2> children; //Initialize the children vector
                 children.resize(split);
-                std::memcpy(&children[0], &cur_array[0 + accumulated_entry_number], split*sizeof(children[0]));
-                future_nodes.push_back(children);
-                accumulated_entry_number += split;
 
-                //This is necessary to prevent adding to entries_to_insert
+                //Copy the entries which will belong and descend from that child
+                std::memcpy(&children[0], &cur_array[0 + accumulated_entry_number], split*sizeof(children[0]));
+
+                //Calculate the size of the top node and use it to calculate the offset to consecutive child
+                offsets.push_back(futureSizeCalculator(children.size(), BtreeNodeSize, payload_size));
+
+                //Push it onto the queue for processing in the future
+                future_nodes.push_back(children);
+                accumulated_entry_number += split; //Account for the progress in the array.
+
+                //This is necessary to prevent adding to entries_to_insert too many times
                 if (accumulated_entry_number < cur_array.size()) {
                     entries_to_insert.push_back(cur_array[accumulated_entry_number]);
                     accumulated_entry_number++;
@@ -91,7 +103,6 @@ void array2balancedBtree(std::vector<unsigned char> &byte_arr, std::vector<Entry
             assert(entries_to_insert.size() == BtreeNodeSize); //Something's wrong with the algorithm otherwise.
 
             //Do prefix sums for future offsets and add the last
-            //@TODO those should be divided by four
             for (unsigned int i = 2; i < offsets.size(); i++){
                 offsets[i] += offsets[i-1]; //This will effectively compute prefix sum starting from first element.
             }
@@ -106,7 +117,7 @@ void array2balancedBtree(std::vector<unsigned char> &byte_arr, std::vector<Entry
 unsigned int futureSizeCalculator(unsigned int size, unsigned short BtreeNodeSize, int payload_size) {
     unsigned int node_size;
     if (size <= BtreeNodeSize) {
-        node_size = (4 + payload_size)*(size);
+        node_size = (4 + payload_size)*size;
     } else {
         node_size = (4 + payload_size)*BtreeNodeSize + 4 + (4*(BtreeNodeSize + 1))/2;
     }
