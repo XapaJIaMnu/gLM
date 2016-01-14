@@ -4,7 +4,8 @@
 #include <algorithm>
 
 int main(int argc, char* argv[]) {
-    int BtreeNodeSize = 3;
+    unsigned int BtreeNodeSize = 3;
+    bool lastNgram = false;
     const char * filename1 = "graph.dot";
     const char * filename2 = "graph_compressed.dot";
     unsigned int num_entries = 25;
@@ -31,7 +32,12 @@ int main(int argc, char* argv[]) {
     std::sort(array.begin(), array.end()); 
 
     std::vector<unsigned char> btree_byte_arr;
-    array2balancedBtree(btree_byte_arr, array, BtreeNodeSize, false);
+    array2balancedBtree(btree_byte_arr, array, BtreeNodeSize, lastNgram);
+
+    for (auto entry : array) {
+        Entry_with_offset test = searchBtree(btree_byte_arr, 0, BtreeNodeSize, entry.vocabID, lastNgram);
+        std::cout << test.vocabID << std::endl;
+    }
 
     return 0;
 }
