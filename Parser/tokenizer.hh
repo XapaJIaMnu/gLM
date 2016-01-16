@@ -15,6 +15,23 @@ struct processed_line {
     bool filefinished;
 };
 
+//Sorting processed_line
+bool operator> (const processed_line &left, const processed_line &right) {
+    return (left.ngrams > right.ngrams);
+}
+
+bool operator< (const processed_line &left, const processed_line &right) {
+    return (left.ngrams < right.ngrams);
+}
+
+bool operator== (const processed_line &left, const processed_line &right) {
+    return (left.ngrams == right.ngrams);
+}
+
+bool operator!= (const processed_line &left, const processed_line &right) {
+    return (left.ngrams != right.ngrams);
+}
+
 std::ostream& operator<< (std::ostream &out, processed_line &line) {
     out << "Number of ngrams: " << line.ngram_size << " End of file: " << line.filefinished << "\n" << line.score << ' ';
     for (int i = 0; i < line.ngram_size; i++) {
