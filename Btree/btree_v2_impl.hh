@@ -5,6 +5,9 @@
 #include <assert.h>
 #include <deque>
 #include "btree_v2.hh"
+#include <sstream>
+#include <set>
+#include <algorithm>
 
 void array2balancedBtree(std::vector<unsigned char> &byte_arr, std::vector<Entry_v2> &array, unsigned short BtreeNodeSize, bool lastNgram) {
     /*Idea: First we have the current BTree constructed as an array.
@@ -58,7 +61,9 @@ void array2balancedBtree(std::vector<unsigned char> &byte_arr, std::vector<Entry
         offsets.reserve(BtreeNodeSize + 2);
 
         if (cur_array.size() <= BtreeNodeSize) {
-            entry_v2_to_node(byte_arr, cur_array, offsets, payload_size);
+            if (cur_array.size() != 0) { //Only insert non empty entries
+                entry_v2_to_node(byte_arr, cur_array, offsets, payload_size);
+            }
             future_nodes.pop_front();
         } else {
 
@@ -151,9 +156,9 @@ void entry_v2_to_node(std::vector<unsigned char> &byte_arr, std::vector<Entry_v2
         if (payload_size == 4) {
             std::memcpy(&payloads[0] + 4*i, &entries[i].prob, sizeof(entries[i].prob));
         } else {
-            memset(&payloads[0] + 4*i, 0, 4); //Empty next_level_offset
-            std::memcpy(&payloads[0] + 4*i + 4, &entries[i].prob, sizeof(entries[i].prob));
-            std::memcpy(&payloads[0] + 4*i + 8, &entries[i].backoff, sizeof(entries[i].backoff));
+            memset(&payloads[0] + 12*i, 0, 4); //Empty next_level_offset
+            std::memcpy(&payloads[0] + 12*i + 4, &entries[i].prob, sizeof(entries[i].prob));
+            std::memcpy(&payloads[0] + 12*i + 8, &entries[i].backoff, sizeof(entries[i].backoff));
         }
     }
 
@@ -228,6 +233,7 @@ Entry_with_offset searchBtree(std::vector<unsigned char> &byte_arr, size_t Btree
         result = searchNode(byte_arr, current_start_pos, node_size, vocabID, payload_size, BtreeNodeSize);
         current_start_pos = result.next_child_offset;
         node_size = result.next_child_size;
+        assert(current_start_pos < byte_arr.size());
         if (result.found) {
             return result;
         } else if ((current_start_pos == 0) && (node_size == 0)){
@@ -292,7 +298,7 @@ Entry_with_offset searchNode(std::vector<unsigned char> &byte_arr, size_t StartP
                 additional_offset = 0;
                 next_node_size = next_children_offsets[found.first];
             } else {
-                additional_offset = next_children_offsets[found.first];
+                additional_offset = next_children_offsets[found.first - 1];
                 next_node_size = next_children_offsets[found.first] - next_children_offsets[found.first - 1];
             }
             first_child_full_offset += additional_offset;
@@ -346,4 +352,60 @@ std::pair<unsigned int, bool> linearSearch(unsigned int * arr_to_search, unsigne
     }
 
     return ret;
+}
+
+std::pair<bool, std::string> test_btree_v2(unsigned int num_elements, unsigned short BtreeNodeSize, bool lastNgram) {
+    std::stringstream error;
+    bool passes = true;
+
+    //Create the Btree
+    std::set<unsigned int> prev_nums; //Used to see if we have duplicating nums
+    std::vector<Entry_v2> array;
+    while (prev_nums.size() < num_elements) {
+        unsigned int new_entry = 1 + (rand() % (num_elements*10));
+        if (prev_nums.count(new_entry) == 0){
+            Entry_v2 new_entry_actual = {new_entry, prev_nums.size() + 0.0f, prev_nums.size() + 0.5f};
+            array.push_back(new_entry_actual);
+            prev_nums.insert(new_entry);
+        }
+    }
+
+    std::sort(array.begin(), array.end()); 
+
+    std::vector<unsigned char> btree_byte_arr;
+    array2balancedBtree(btree_byte_arr, array, BtreeNodeSize, lastNgram);
+
+    for (auto entry : array) {
+        Entry_with_offset test = searchBtree(btree_byte_arr, 0, BtreeNodeSize, entry.vocabID, lastNgram);
+        if (lastNgram) {
+            if (entry.vocabID != test.vocabID || entry.prob != test.prob) {
+                error << "Expected vocabID:" << entry.vocabID << " prob: " << entry.prob << ", got: " << test.vocabID << " " << test.prob << std::endl;
+                passes = false;
+                break;
+            }
+        } else {
+            //assign a dummy next level offset just to test that it works:
+            *test.next_level = entry.vocabID;
+            if (entry.vocabID != test.vocabID || entry.prob != test.prob || entry.backoff != test.backoff) {
+                error << "Expected vocabID:" << entry.vocabID << " prob: " << entry.prob << " backoff: " << entry.backoff <<
+                ", got: " << test.vocabID << " " << test.prob << " " << test.backoff << std::endl;
+                passes = false;
+                break;
+            }
+        }  
+    }
+
+    //Test if next_level was saved successfully
+    if (!lastNgram && passes) {
+        for (auto entry : array) {
+            Entry_with_offset test = searchBtree(btree_byte_arr, 0, BtreeNodeSize, entry.vocabID, lastNgram);
+            if (entry.vocabID != *test.next_level) {
+                error << "Expected next_level to be set to: " << entry.vocabID << ", got: " << *test.next_level << std::endl;
+                passes = false;
+                break;
+            }
+        }
+    }
+
+    return std::pair<bool, std::string>(passes, error.str());
 }

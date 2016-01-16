@@ -28,4 +28,5 @@ add_subdirectory (gpu)
 enable_testing ()
 add_test (NAME AllTest COMMAND tests)
 add_test (NAME gpu_test COMMAND gpu_tests_suite)
+add_test (NAME btree_test COMMAND btree_tests)
 
