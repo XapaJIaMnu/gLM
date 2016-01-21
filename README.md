@@ -15,11 +15,9 @@ make test #Requires CUDA for GPU testing
 ## Binarize arpa files
 ```bash
 cd path_to_glm/release_build/bin
-./binarize path_to_arpa_file output_path [btree_node_size] [CompactMode]
+./binarize path_to_arpa_file output_path [btree_node_size]
 ```
 *btree_node_size* should be an odd number. Personally I found that 31 works best, but you should experiment. The number could vary with different size arpa files and different GPUs
-
-If *compactMode* is not set, or is set to *0* gLM will use memory mapped IO for the model. If *compactMode* is set, the model is going to use boost.serialization over bzip2 compressed stream, which will result in about 3 times more compact model, but the loading time could increase 10-80 fold depending on your CPU and your IO system.
 
 ## Batch query
 To benchmark gLM in batch setting do:

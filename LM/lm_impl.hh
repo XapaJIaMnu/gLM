@@ -50,7 +50,7 @@ void readDatastructure(DataStructure& byte_arr, const StringType path){
 }
 
 template<class StringType>
-void LM::storeConfigFile(const StringType path, bool compactStorage) {
+void LM::storeConfigFile(const StringType path) {
     std::ofstream configfile(path);
 
     if (configfile.fail()) {
@@ -59,10 +59,10 @@ void LM::storeConfigFile(const StringType path, bool compactStorage) {
     }
 
     configfile << metadata.byteArraySize << '\n';
+    configfile << metadata.intArraySize << '\n';
     configfile << metadata.max_ngram_order << '\n';
     configfile << metadata.api_version << '\n';
     configfile << metadata.btree_node_size << '\n';
-    configfile << !compactStorage << '\n';
     //Also store in the config file the size of the datastructure. Useful to know if we can fit our model
     //on the available GPU memory, but we don't actually need to ever read it back. It is for the user's benefit.
     configfile << "BTree Trie memory size: " << metadata.byteArraySize/(1024*1024) << " MB\n";
@@ -84,6 +84,10 @@ void LM::readConfigFile(const StringType path) {
     getline(configfile, line);
     metadata.byteArraySize = std::stoull(line.c_str());
 
+    //Get int array size
+    getline(configfile, line);
+    metadata.intArraySize = std::stoull(line.c_str());
+
     //Get max ngram order
     getline(configfile, line);
     metadata.max_ngram_order = atoi(line.c_str());
@@ -101,9 +105,6 @@ void LM::readConfigFile(const StringType path) {
     getline(configfile, line);
     metadata.btree_node_size = atoi(line.c_str());
 
-    //Get the type of serialization: mmap or boost_serialization. True(1) for boost_serialization
-    getline(configfile, line);
-    metadata.mmapd = (bool)atoi(line.c_str());
 }
 
 template<class StringType>
@@ -123,21 +124,21 @@ void createDirIfnotPresent(const StringType path) {
 
 //Given a path and an LM binarizes the LM there
 template<class StringType>
-void LM::writeBinary(const StringType path, bool compactStorage) {
+void LM::writeBinary(const StringType path) {
     createDirIfnotPresent(path);
     std::string basepath(path);
-    storeConfigFile(basepath + "/config", compactStorage);
+    storeConfigFile(basepath + "/config");
     serializeDatastructure(encode_map, basepath + "/encode.map");
     serializeDatastructure(decode_map, basepath + "/decode.map");
 
-    //Determine whether to use mmap to write to disk or boost_serialization:
-    if (compactStorage) {
-        serializeDatastructure(trieByteArray, basepath + "/lm.bin");
-    } else {
-        std::ofstream os (basepath + "/lm.bin", std::ios::binary);  
-        os.write(reinterpret_cast<const char *>(trieByteArray.data()), trieByteArray.size());
-        os.close();
-    }
+    //Use mmap for the big files
+    std::ofstream os (basepath + "/lm.bin", std::ios::binary);  
+    os.write(reinterpret_cast<const char *>(trieByteArray.data()), trieByteArray.size());
+    os.close();
+
+    std::ofstream os2 (basepath + "/first_lvl.bin", std::ios::binary);  
+    os2.write(reinterpret_cast<const char *>(first_lvl.data()), trieByteArray.size()*sizeof(unsigned int));
+    os2.close();
     
 }
 
@@ -149,22 +150,23 @@ LM::LM(const StringType path) {
     readDatastructure(this->encode_map, basepath + "/encode.map");
     readDatastructure(this->decode_map, basepath + "/decode.map");
 
-    if (!metadata.mmapd) {
-        trieByteArray.reserve(metadata.byteArraySize);
-        readDatastructure(trieByteArray, basepath + "/lm.bin");
-    } else {
-        //@TODO we should really make that step optional
-        //We don't need the copy to vector since we're only going to copy it to GPU memory
-        mmapedByteArray= readMmapTrie((basepath + "/lm.bin").c_str(), metadata.byteArraySize);
-        trieByteArray.resize(metadata.byteArraySize);
-        std::memcpy(trieByteArray.data(), mmapedByteArray, metadata.byteArraySize);
+    //@TODO we should really make that step optional
+    //We don't need the copy to vector since we're only going to copy it to GPU memory
+    mmapedByteArray = (unsigned char *)readMmapTrie((basepath + "/lm.bin").c_str(), metadata.byteArraySize);
+    trieByteArray.resize(metadata.byteArraySize);
+    std::memcpy(trieByteArray.data(), mmapedByteArray, metadata.byteArraySize);
+
+    if (metadata.intArraySize) { //Only readIn the int Array if it is actually used
+        mmapedFirst_lvl = (unsigned int *)readMmapTrie((basepath + "/first_lvl.bin").c_str(), metadata.intArraySize*sizeof(unsigned int));
+        first_lvl.resize(metadata.intArraySize);
+        std::memcpy(first_lvl.data(), mmapedByteArray, metadata.intArraySize);
     }
 }
 
-unsigned char * readMmapTrie(const char * filename, size_t size) {
+void * readMmapTrie(const char * filename, size_t size) {
     //Initial position of the file is the end of the file, thus we know the size
     int fd;
-    unsigned char * map;
+    void * map;
 
     fd = open(filename, O_RDONLY);
     if (fd == -1) {
@@ -172,7 +174,7 @@ unsigned char * readMmapTrie(const char * filename, size_t size) {
         exit(EXIT_FAILURE);
     }
 
-    map = (unsigned char *)mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
+    map = mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
 
     if (map == MAP_FAILED) {
         close(fd);

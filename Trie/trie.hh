@@ -254,6 +254,8 @@ void createTrieArray(const StringType infile, unsigned short btree_node_size, LM
     trieToByteArray(lm.trieByteArray, root_btree_trie);
     lm.metadata.byteArraySize = trie_size;
 
+    lm.metadata.intArraySize = 0; //Old trie doesn't have an intArray so give it a default value of 0
+
     //Free the B tree trie
     deleteTrie(root_btree_trie);
 }
