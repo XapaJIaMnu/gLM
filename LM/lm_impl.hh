@@ -145,6 +145,8 @@ void LM::writeBinary(const StringType path) {
 //Reads the model into the given (presumably empty byte_arr)
 template<class StringType>
 LM::LM(const StringType path) {
+    diskIO = true; //Indicate that we have performed diskIO and we need to call munmap in the destructor
+
     std::string basepath(path);
     this->readConfigFile(basepath + "/config");
     readDatastructure(this->encode_map, basepath + "/encode.map");

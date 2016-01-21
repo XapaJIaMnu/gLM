@@ -44,6 +44,7 @@ class LM {
         void storeConfigFile(const StringType path);
         unsigned char * mmapedByteArray;
         unsigned int * mmapedFirst_lvl;
+        bool diskIO = false; //Keep track whether we have a readIN binarized LM or an LM created in memory.
     public:
         std::vector<unsigned char> trieByteArray;
         std::vector<unsigned int> first_lvl;
@@ -58,11 +59,13 @@ class LM {
 
         //Destructor. Undo memory maps
         ~LM() {
-            munmap(reinterpret_cast<void *>(mmapedByteArray), metadata.byteArraySize);
-            //To maintain compatibility with the old format for now, check if intArraySize is more than 0
-            //before attempting to execute memory map
-            if (metadata.intArraySize) {
-                munmap(reinterpret_cast<void *>(mmapedByteArray), metadata.intArraySize);
+            if (diskIO) {
+                munmap(reinterpret_cast<void *>(mmapedByteArray), metadata.byteArraySize);
+                //To maintain compatibility with the old format for now, check if intArraySize is more than 0
+                //before attempting to execute memory map
+                if (metadata.intArraySize) {
+                    munmap(reinterpret_cast<void *>(mmapedByteArray), metadata.intArraySize);
+                }
             }
         }
 
