@@ -5,6 +5,7 @@ add_executable(btree_test btree_test.cpp)
 add_executable(btree_v2_test btree_v2_test.cpp)
 add_executable(tokenize_test tokenize_tests.cpp)
 add_executable(trie_test trie_test.cpp)
+add_executable(trie_v2_test trie_v2_test.cpp)
 add_executable(btree_drawer btree_drawer.cpp)
 
 add_executable(cuda_test cuda_test.cpp)

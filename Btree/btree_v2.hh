@@ -12,6 +12,8 @@ struct Entry_with_offset {
     //Those two will make debugging easier during development. They add a miniscule overhead so I will just leave them as they are.
     bool found;
     unsigned int found_idx;
+    //This is for CPU search
+    unsigned int currentBtreeStart;
 };
 
 void array2balancedBtree(std::vector<unsigned char> &byte_arr, std::vector<Entry_v2> &array, unsigned short BtreeNodeSize, bool lastNgram);

@@ -235,9 +235,11 @@ Entry_with_offset searchBtree(std::vector<unsigned char> &byte_arr, size_t Btree
         node_size = result.next_child_size;
         assert(current_start_pos < byte_arr.size());
         if (result.found) {
+            result.currentBtreeStart = BtreeStartPosition;
             return result;
         } else if ((current_start_pos == 0) && (node_size == 0)){
             //We have not found the vocabID and we have reached a leaf.
+            result.currentBtreeStart = BtreeStartPosition;
             return result;
         }
     }
@@ -245,7 +247,7 @@ Entry_with_offset searchBtree(std::vector<unsigned char> &byte_arr, size_t Btree
 
 Entry_with_offset searchNode(std::vector<unsigned char> &byte_arr, size_t StartPosition, unsigned int node_size, unsigned int vocabID,
  unsigned short payload_size, unsigned short BtreeNodeSize) {
-    Entry_with_offset result = {0, 0, 0.0, 0.0, 0, 0, false, 0};
+    Entry_with_offset result = {0, 0, 0.0, 0.0, 0, 0, false, 0, 0};
 
     unsigned int entry_size = 4 + payload_size;
     //Determine whether we have a leaf or internal node. If the node is internal it's going to be fully saturated. Otherwise
