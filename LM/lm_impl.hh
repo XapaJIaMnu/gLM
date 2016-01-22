@@ -63,9 +63,11 @@ void LM::storeConfigFile(const StringType path) {
     configfile << metadata.max_ngram_order << '\n';
     configfile << metadata.api_version << '\n';
     configfile << metadata.btree_node_size << '\n';
-    //Also store in the config file the size of the datastructure. Useful to know if we can fit our model
+    //Also store in the config file the size of the datastructures. Useful to know if we can fit our model
     //on the available GPU memory, but we don't actually need to ever read it back. It is for the user's benefit.
+    configfile << "First trie level memory size: " << metadata.intArraySize/(4*1024*1024) << " MB\n";
     configfile << "BTree Trie memory size: " << metadata.byteArraySize/(1024*1024) << " MB\n";
+    configfile << "Total GPU memory required: " << metadata.byteArraySize/(1024*1024) +  metadata.intArraySize/(4*1024*1024) << " MB\n";
     configfile.close();
 }
 
@@ -161,7 +163,7 @@ LM::LM(const StringType path) {
     if (metadata.intArraySize) { //Only readIn the int Array if it is actually used
         mmapedFirst_lvl = (unsigned int *)readMmapTrie((basepath + "/first_lvl.bin").c_str(), metadata.intArraySize*sizeof(unsigned int));
         first_lvl.resize(metadata.intArraySize);
-        std::memcpy(first_lvl.data(), mmapedByteArray, metadata.intArraySize);
+        std::memcpy(first_lvl.data(), mmapedFirst_lvl, metadata.intArraySize*sizeof(unsigned int));
     }
 }
 

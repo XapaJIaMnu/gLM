@@ -92,7 +92,7 @@ void createTrie(const StringType filename, LM& lm, unsigned short BtreeNodeSize)
 
 }
 
-void addBtreeToTrie(std::vector<Entry_v2> &entries_to_insert, std::vector<unsigned char> &byte_arr, std::vector<unsigned int> first_lvl,
+void addBtreeToTrie(std::vector<Entry_v2> &entries_to_insert, std::vector<unsigned char> &byte_arr, std::vector<unsigned int> &first_lvl,
  std::vector<unsigned int> context, unsigned short BtreeNodeSize, bool lastNgram) {
     /*
     1) Find the current context.
@@ -100,7 +100,8 @@ void addBtreeToTrie(std::vector<Entry_v2> &entries_to_insert, std::vector<unsign
     3) create a Btree at the end of the byte_arr
     */
     
-    Entry_with_offset cur_context = searchTrie(byte_arr, first_lvl, context, BtreeNodeSize, lastNgram);
+    //Since we are looking for the context in the trie, the lastNgram variable in this call is always false
+    Entry_with_offset cur_context = searchTrie(byte_arr, first_lvl, context, BtreeNodeSize, false);
 
     //Check for buggy arpa files
     if (!cur_context.found) {
@@ -113,13 +114,8 @@ void addBtreeToTrie(std::vector<Entry_v2> &entries_to_insert, std::vector<unsign
         std::exit(EXIT_FAILURE);
     }
 
+    //Assign the next_level for this context.
     assert((byte_arr.size() - cur_context.currentBtreeStart) % 4 == 0); //Sanity check.
-
-    if (context[0] == 3) {
-        std::cout << "We are here: " << std::endl;
-    }
-
-    //Assign the next_level for this context
     *cur_context.next_level = (byte_arr.size() - cur_context.currentBtreeStart)/4;
 
     //create a Btree at the next level
@@ -127,7 +123,7 @@ void addBtreeToTrie(std::vector<Entry_v2> &entries_to_insert, std::vector<unsign
 
 }
 
-Entry_with_offset searchTrie(std::vector<unsigned char> &btree_trie_byte_arr, std::vector<unsigned int> first_lvl,
+Entry_with_offset searchTrie(std::vector<unsigned char> &btree_trie_byte_arr, std::vector<unsigned int> &first_lvl,
     std::vector<unsigned int> ngrams, unsigned short BtreeNodeSize, bool lastNgram) {
 
     //sanity check
@@ -136,15 +132,15 @@ Entry_with_offset searchTrie(std::vector<unsigned char> &btree_trie_byte_arr, st
     //First level search is easy -> the next_level, prob and backoff for vocabID n are located at (n-1)*3, (n-1)*3+1 and (n-1)*3+2 of the
     //byte_arr 
     unsigned int * next_level = &first_lvl[(ngrams[0]-1)*3];
-    float prob = first_lvl[(ngrams[0]-1)*3 + 1];
-    float backoff = first_lvl[(ngrams[0]-1)*3 + 2];
+    float * prob = reinterpret_cast<float *>(&first_lvl[(ngrams[0]-1)*3 + 1]);
+    float * backoff = reinterpret_cast<float *>(&first_lvl[(ngrams[0]-1)*3 + 2]);
     unsigned int vocabID = ngrams[0];
 
     struct Entry_with_offset entry_traverse = {
         vocabID, //VocabID
         next_level, //unsigned int * next_level
-        prob,
-        backoff,
+        *prob,
+        *backoff,
         0, //size_t next_child_offset; we don't use it
         0, //unsigned short next_child_size; we don't use it
         true, //bool found;
@@ -223,7 +219,6 @@ std::pair<bool, std::string> test_trie(const StringType filename, unsigned short
             correct = false;
             break;
         }
-        std::cout << text << std::endl;
         text = infile.readline();
     }
 
