@@ -48,8 +48,9 @@ void createTrie(const StringType filename, LM& lm, unsigned short BtreeNodeSize)
 
         //Create a BTree from each of them
         processed_line prev_line = ngrams[0]; //Fake the previous line to be the first line. 
-                                              //This makes the if statement 10 lines later pass on the first iteration.
+                                              //This makes the if statement 11 lines later pass on the first iteration.
 
+        std::vector<unsigned int> context(current_ngram_size - 1);
         std::vector<Entry_v2> entries_to_insert;
         for (auto ngram : ngrams) {
             //Create an entry
@@ -61,21 +62,20 @@ void createTrie(const StringType filename, LM& lm, unsigned short BtreeNodeSize)
             //Insert entries in vector only if the current prefix is equal to the previous.
             if (std::equal(ngram.ngrams.begin(), ngram.ngrams.begin() + current_ngram_size - 1, prev_line.ngrams.begin())) {
                 entries_to_insert.push_back(entry);
-            } else {
                 //Create a context. The context is everything minus the last word of the ngram vector
-                std::vector<unsigned int> context(current_ngram_size - 1);
                 std::copy(ngram.ngrams.begin(), ngram.ngrams.begin() + current_ngram_size - 1, context.begin());
-
+            } else {
                 //Add to the BtreeTrie
                 addBtreeToTrie(entries_to_insert, lm.trieByteArray, lm.first_lvl, context, BtreeNodeSize, lastNgram);
                 entries_to_insert.clear();
                 entries_to_insert.push_back(entry);
+                //Create a context in case of only a single ngram with this context
+                std::copy(ngram.ngrams.begin(), ngram.ngrams.begin() + current_ngram_size - 1, context.begin());
             }
 
             prev_line = ngram; //Keep track of the previous line
         }
         //Handle the last case. Take the last entry from the ngrams vector
-        std::vector<unsigned int> context(current_ngram_size - 1);
         std::copy(ngrams[ngrams.size() - 1].ngrams.begin(), ngrams[ngrams.size() - 1].ngrams.begin() + current_ngram_size - 1, context.begin());
         addBtreeToTrie(entries_to_insert, lm.trieByteArray, lm.first_lvl, context, BtreeNodeSize, lastNgram);
         entries_to_insert.clear();
@@ -115,8 +115,11 @@ void addBtreeToTrie(std::vector<Entry_v2> &entries_to_insert, std::vector<unsign
 
     assert((byte_arr.size() - cur_context.currentBtreeStart) % 4 == 0); //Sanity check.
 
+    if (context[0] == 3) {
+        std::cout << "We are here: " << std::endl;
+    }
+
     //Assign the next_level for this context
-    //@TODO we neeed to get the start of the current btree from searchTrie
     *cur_context.next_level = (byte_arr.size() - cur_context.currentBtreeStart)/4;
 
     //create a Btree at the next level
