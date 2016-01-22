@@ -65,9 +65,9 @@ void LM::storeConfigFile(const StringType path) {
     configfile << metadata.btree_node_size << '\n';
     //Also store in the config file the size of the datastructures. Useful to know if we can fit our model
     //on the available GPU memory, but we don't actually need to ever read it back. It is for the user's benefit.
-    configfile << "First trie level memory size: " << metadata.intArraySize/(4*1024*1024) << " MB\n";
+    configfile << "First trie level memory size: " << 4*(metadata.intArraySize/(1024*1024)) << " MB\n";
     configfile << "BTree Trie memory size: " << metadata.byteArraySize/(1024*1024) << " MB\n";
-    configfile << "Total GPU memory required: " << metadata.byteArraySize/(1024*1024) +  metadata.intArraySize/(4*1024*1024) << " MB\n";
+    configfile << "Total GPU memory required: " << metadata.byteArraySize/(1024*1024) +  4*(metadata.intArraySize/(1024*1024)) << " MB\n";
     configfile.close();
 }
 
