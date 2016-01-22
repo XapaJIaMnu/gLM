@@ -9,6 +9,7 @@
 #include <set>
 #include <algorithm>
 
+//Note that the ARRAY vector will be cleared during execution so that memory usage doesn't get too out of hand.
 void array2balancedBtree(std::vector<unsigned char> &byte_arr, std::vector<Entry_v2> &array, unsigned short BtreeNodeSize, bool lastNgram) {
     /*Idea: First we have the current BTree constructed as an array.
       We convert that array to a BTree using the following algorithm:
@@ -52,7 +53,8 @@ void array2balancedBtree(std::vector<unsigned char> &byte_arr, std::vector<Entry
 
     //Set up for a while loop
     std::deque<std::vector<Entry_v2> > future_nodes;
-    future_nodes.push_back(array); //@TODO clear memory here.
+    future_nodes.push_back(array);
+    array.clear(); //We are not goint to use the original input array anymore, so clear it in order to use less memory
 
     while (!future_nodes.empty()) {
         std::vector<Entry_v2> cur_array = future_nodes.front();
