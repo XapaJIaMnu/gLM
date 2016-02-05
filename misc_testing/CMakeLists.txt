@@ -20,6 +20,12 @@ target_link_libraries(gpu_trie_test
                       gpu_search
                       )
                       
+add_executable(gpu_trie_test_v2 gpu_trie_test_v2.cpp)
+target_link_libraries(gpu_trie_test_v2
+                      memory_management
+                      gpu_search_v2
+                      )
+                      
 add_executable(interactive_gpu_test interactive_gpu_test.cpp)
 target_link_libraries(interactive_gpu_test
                       memory_management

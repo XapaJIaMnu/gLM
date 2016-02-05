@@ -308,6 +308,9 @@ Entry_with_offset searchNode(std::vector<unsigned char> &byte_arr, size_t StartP
             first_child_full_offset += additional_offset;
             result.next_child_offset = first_child_full_offset;
             result.next_child_size = next_node_size;
+            //std::cout << "Current start position: " << StartPosition << std::endl;
+            //std::cout << "Small first child offset: " << *first_child_offset << std::endl;
+            //std::cout << "First child total offset: " << first_child_full_offset << " next size: " << next_node_size << std::endl;
         }
     }
     //Extract payloads if we have found the entry.

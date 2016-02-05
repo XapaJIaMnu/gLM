@@ -17,6 +17,7 @@ std::pair<bool, std::string> testQueryNgrams(LM& lm, unsigned char * btree_trie_
     while (!text2.filefinished) {
         //Inefficient reallocation of keys_to_query. Should be done better
         unsigned int num_padded =  max_ngram_order - text2.ngrams.size();
+
         for (unsigned int i = 0; i < num_padded; i++) {
             text2.ngrams.push_back(0); //Extend ngrams to max num ngrams if they are of lower order
         }
@@ -53,7 +54,7 @@ std::pair<bool, std::string> testQueryNgrams(LM& lm, unsigned char * btree_trie_
         float exp_prob = check_against[i];
 
         if (!(exp_prob == res_prob)) {
-            error << "Error expected prob: " << exp_prob << " got: " << res_prob << "."<< std::endl;
+            error << "Error expected prob: " << exp_prob << " got: " << res_prob << " at line: " << i << "."<< std::endl;
             allcorrect = false;
             break;
         }

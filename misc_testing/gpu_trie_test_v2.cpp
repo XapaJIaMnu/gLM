@@ -1,13 +1,17 @@
-#include "trie.hh"
+#include "trie_v2_impl.hh"
 #include "memory_management.hh"
-#include "gpu_search.hh"
+#include "gpu_search_v2.hh"
 #include <chrono>
 #include <ctime>
 
 int main(int argc, char* argv[]) {
     LM lm;
-    createTrieArray(argv[1], atoi(argv[2]), lm);
+    createTrie(argv[1],lm, atoi(argv[2]));
+
+    //Initiate gpu search
     unsigned char * btree_trie_gpu = copyToGPUMemory(lm.trieByteArray.data(), lm.trieByteArray.size());
+    unsigned int * first_lvl_gpu = copyToGPUMemory(lm.first_lvl.data(), lm.first_lvl.size());
+
     //input ngram
     std::string response;
     boost::char_separator<char> sep(" ");
@@ -29,8 +33,7 @@ int main(int argc, char* argv[]) {
         float * results;
         allocateGPUMem(num_keys, &results);
 
-        unsigned int entrySize = getEntrySize(/*pointer2index =*/ true);
-        searchWrapper(btree_trie_gpu, gpuKeys, num_keys, results, lm.metadata.btree_node_size, entrySize, lm.metadata.max_ngram_order);
+        searchWrapper(btree_trie_gpu, first_lvl_gpu, gpuKeys, num_keys, results, lm.metadata.btree_node_size, lm.metadata.max_ngram_order);
 
         //Copy back to host
         float * results_cpu = new float[num_keys];
@@ -45,4 +48,5 @@ int main(int argc, char* argv[]) {
     }
 
     freeGPUMemory(btree_trie_gpu);
+    freeGPUMemory(first_lvl_gpu);
 }

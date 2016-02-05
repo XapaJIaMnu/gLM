@@ -39,21 +39,48 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
     bool get_backoff = false; //Are we looking to extract backoff or prob from our ngram
 
     //First get the value from first_lvl
+    unsigned int current_ngram = 0;
+    unsigned int key = keys_shared[current_ngram];
+
+    //Backoff logic
+    backoff_part2:
+    if (get_backoff) {
+        accumulated_score += *prob; //We add the longest match of probability we found.
+        match_length_found = current_ngram - 1; //The length of the match found. We need to backoff from toplevel to here
+        current_ngram = 1; //Set backoff in -1. If we run into this case again we need to do nothing
+        key = keys_shared[current_ngram];
+        get_backoff = true;
+        __syncthreads(); //Needed!
+    }
     if (i < 3) {
-        payload[i] = first_lvl[(keys_shared[0]-1)*3 + i];
+        payload[i] = first_lvl[(key-1)*3 + i];
+        __syncthreads();
+        //If this is the last non zero ngram  no need to go to the btree_trie. We already have
+        //the payload value
+        if (get_backoff && match_length_found <= current_ngram) {
+            accumulated_score += *backoff;
+        } else if (keys_shared[current_ngram + 1] == 0) {
+            accumulated_score += *prob;
+        }
     }
     __syncthreads();
 
     //Set the start index
     unsigned int current_btree_start = *next_level*4;
-    unsigned int current_ngram = 1;
-    unsigned int key = keys_shared[current_ngram];
+    current_ngram++;
+    key = keys_shared[current_ngram];
 
     //Some necessary variables
     unsigned int updated_idx;
     unsigned int size;
 
-    while (key != 0 && current_ngram < max_ngram - 1) {
+    //Current_btree_start == 0 means that we had UNK key (vocabID 1 which wasn't found, so we should directly go to backoff
+    //@TODO we can check if key[0] == 1 when we get the score too
+    if (current_btree_start == 0 && key != 0) {
+        goto backoff_notriecont;
+    }
+
+    while (key != 0 && current_ngram < max_ngram - 1 && current_btree_start != 0) {
         current_ngram++;
         updated_idx = current_btree_start + 4; //Update the index for the while loop
         //@TODO consider this for shared memory as oppposed to global mem broadcast to register
@@ -84,13 +111,14 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
                 }
             } else {
                 num_entries = entries_per_node;
-                //Load the unsigned int start offset together with the accumulated offsets to avoid warp divergence
-                if (i < (max_num_children/2) + 1) {
-                    offsets[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + i*sizeof(unsigned int)]);
-                }
                 //Now load the entries
                 if (i < num_entries) {
-                    entries[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + sizeof(unsigned int) + max_num_children*sizeof(unsigned short) + i*sizeof(unsigned int)]);
+                    entries[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + i*sizeof(unsigned int)]);
+                }
+
+                //Load the unsigned int start offset together with the accumulated offsets to avoid warp divergence
+                if (i < (max_num_children/2) + 1) {
+                    offsets[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + num_entries*sizeof(unsigned int) + i*sizeof(unsigned int)]);
                 }
             }
             __syncthreads();
@@ -128,6 +156,7 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
                     updated_idx += offests_incremental[found_idx - 1];
                     size = offests_incremental[found_idx] - offests_incremental[found_idx - 1];
                 }
+                __syncthreads(); //Necessary @TODO why is it necessary!?!?
             } else if (*is_last && !*exact_match) {
                 //In this case we didn't find the key that we were looking for
                 //What we should do is get the probability of the last node that we found
@@ -138,16 +167,9 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
                     break; //If we didn't find a backoff, the value is zero; //We should go to end now, because any further backoffs
                     // will be missing from the trie
                 } else {
-                    accumulated_score += *prob; //We add the longest match of probability we found.
+                    get_backoff = true;
+                    goto backoff_part2;
                 }
-                match_length_found = current_ngram - 1; //The length of the match found. We need to backoff from toplevel to here
-                current_ngram = 1; //Set backoff in -1. If we run into this case again we need to do nothing
-                key = keys_shared[current_ngram];
-                current_btree_start = 4;
-                get_backoff = true;
-                __syncthreads(); //Needed!
-                break;
-
             } else {
                 //Locate the rest of the data for the entry (i.e. the payload - backoff, prob, next offset)
                 if (i < 3) {
@@ -165,29 +187,18 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
                     }
                 }
 
-                key = keys_shared[current_ngram]; //@TODO Out of bounds memory access here probably
-                //__syncthreads(); Not a proper fix! Replace that with proper check for invalid next level of btree
-                //if (*next_level == 0 && key != 0 && !get_backoff) { //key == 0 attempts to prevent <s> from falling here
-                //    goto unktoken; //If we have invalid "next_level" it's going to be indexed 0. True for unk
-                //}
+                key = keys_shared[current_ngram];
                 __syncthreads();
-                if (current_ngram < max_ngram && key != 0) {
-                    //@TODO this might not be necessary in this case: only in the last_btree_level so the logic can be simplified
-                    if (*next_level == 0) {
-                        //STOP. We are in the case of a trie that doesn't continue further. In this case we should basically
-                        //do the backoff procuedure
-                        goto backoff_notriecont;
-                    }
-                    current_btree_start = current_btree_start + *next_level*4;
-                    if (get_backoff && (match_length_found < current_ngram)) { //Get all necessary backoffs on the way
+                current_btree_start = current_btree_start + *next_level*4;
+
+                if (get_backoff) {
+                    if (match_length_found <= current_ngram) {
                         accumulated_score += *backoff;
+                    } else {
+                        current_ngram = max_ngram;; //This will exit the while loop
                     }
-                } else {
-                    if (get_backoff && (match_length_found < current_ngram)) {
-                        accumulated_score += *backoff;
-                    } else { //Actual match here
-                        accumulated_score += *prob;
-                    }
+                } else if (key == 0) {
+                    accumulated_score += *prob;
                 }
                 break;
             }
@@ -197,6 +208,7 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
     //Now fetch the last level if the key is not 0 or we backed off
     //key = keys_shared[current_ngram]; We already set the next key
     if (!get_backoff && key != 0) {
+
         updated_idx = current_btree_start + 4; //Update the index for the while loop
         //@TODO consider this for shared memory as oppposed to global mem broadcast to register
         size = *(unsigned int *)&btree_trie_mem[current_btree_start];; //The size of the current node to process.
@@ -212,7 +224,7 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
             //First warp divergence here. We are reading in from global memory
             if (i == 0) {
                 //@TODO: Replace this with a mod check
-                int cur_node_entries = (size - sizeof(unsigned int) - sizeof(unsigned short))/(big_entry + sizeof(unsigned short));
+                int cur_node_entries = (size - sizeof(unsigned int) - sizeof(unsigned short))/(small_entry + sizeof(unsigned short));
                 *is_last = !(entries_per_node == cur_node_entries);
             }
             __syncthreads();
@@ -226,13 +238,13 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
                 }
             } else {
                 num_entries = entries_per_node;
-                //Load the unsigned int start offset together with the accumulated offsets to avoid warp divergence
-                if (i < (max_num_children/2) + 1) {
-                    offsets[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + i*sizeof(unsigned int)]);
-                }
                 //Now load the entries
                 if (i < num_entries) {
-                    entries[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + sizeof(unsigned int) + max_num_children*sizeof(unsigned short) + i*sizeof(unsigned int)]);
+                    entries[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + i*sizeof(unsigned int)]);
+                }
+                //Load the unsigned int start offset together with the accumulated offsets to avoid warp divergence
+                if (i < (max_num_children/2) + 1) {
+                    offsets[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + num_entries*sizeof(unsigned int) + i*sizeof(unsigned int)]);
                 }
             }
             __syncthreads();
@@ -270,6 +282,7 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
                     updated_idx += offests_incremental[found_idx - 1];
                     size = offests_incremental[found_idx] - offests_incremental[found_idx - 1];
                 }
+                __syncthreads(); //@TODO why is this necessary!?!?
             } else if (!*exact_match && is_last) {
                 goto backoff_notriecont;
             } else {
@@ -278,10 +291,10 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
                     //What we are doing here is reading the correct memory location for our payload. The payload is found
                     //After the offsets and the keys, so we skip them and then we skip to the correct payload using found_idx
                     if (*is_last) {
-                        accumulated_score += *(unsigned int *)(&btree_trie_mem[updated_idx + num_entries*sizeof(unsigned int) //Skip the keys
+                        accumulated_score += *(float *)(&btree_trie_mem[updated_idx + num_entries*sizeof(unsigned int) //Skip the keys
                             + found_idx*(sizeof(float))]); //Skip the previous keys' payload
                     } else {
-                        accumulated_score += *(unsigned int *)(&btree_trie_mem[updated_idx + sizeof(unsigned int) + max_num_children*sizeof(unsigned short) //Skip the offsets and first offset
+                        accumulated_score += *(float *)(&btree_trie_mem[updated_idx + sizeof(unsigned int) + max_num_children*sizeof(unsigned short) //Skip the offsets and first offset
                             + num_entries*sizeof(unsigned int) //Skip the keys
                                 + found_idx*(sizeof(float))]); //Skip the previous keys' payload
                     }
@@ -290,7 +303,6 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
         }
     }
 
-    //@TODO this might need to be inside the while loop, but I don't think so
     //Write the correct result at the end
     if (i == 0) {
         results[blockIdx.x] = accumulated_score;

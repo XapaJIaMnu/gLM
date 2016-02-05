@@ -224,3 +224,38 @@ std::pair<bool, std::string> test_trie(const StringType filename, unsigned short
 
     return std::pair<bool, std::string>(correct, error.str());
 }
+
+template<class StringType>
+std::pair<bool, std::string> test_trie(LM &lm, const StringType filename, unsigned short BtreeNodeSize) {
+
+    //Try to find every ngram:
+    ArpaReader infile(filename);
+    processed_line text = infile.readline();
+    bool correct = true;
+    std::stringstream error;
+
+    while (!text.filefinished) {
+        bool lastNgram = false;
+        if (text.ngram_size == infile.max_ngrams) {
+            lastNgram = true;
+        }
+        Entry_with_offset res = searchTrie(lm.trieByteArray, lm.first_lvl, text.ngrams, BtreeNodeSize, lastNgram);
+
+        if (!res.found) {
+            error << "Couldn't find entry " << text << std::endl;
+            correct = false;
+            break;
+        } else if (res.prob != text.score) {
+            error << "Expected probability: " << text.score << ", got: " << res.prob << std::endl << text;
+            correct = false;
+            break;
+        } else if (!lastNgram && res.backoff != text.backoff) {
+            error << "Expected backoff: " << text.backoff << ", got: " << res.backoff << std::endl << text;
+            correct = false;
+            break;
+        }
+        text = infile.readline();
+    }
+
+    return std::pair<bool, std::string>(correct, error.str());
+}
