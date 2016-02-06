@@ -37,3 +37,10 @@ target_link_libraries(gpu_tests_suite
                       memory_management
                       gpu_search
                      )
+                     
+add_executable(gpu_tests_suite_v2 gpu_test_suite_v2.cpp)
+target_link_libraries(gpu_tests_suite_v2
+                      ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
+                      memory_management
+                      gpu_search_v2
+                     )

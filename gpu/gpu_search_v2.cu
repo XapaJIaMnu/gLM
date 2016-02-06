@@ -84,7 +84,7 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
         current_ngram++;
         updated_idx = current_btree_start + 4; //Update the index for the while loop
         //@TODO consider this for shared memory as oppposed to global mem broadcast to register
-        size = *(unsigned int *)&btree_trie_mem[current_btree_start];; //The size of the current node to process.
+        size = *(unsigned int *)&btree_trie_mem[current_btree_start]; //The size of the current node to process.
 
         //Initialize shared variable
         if (i < 2) {
@@ -195,7 +195,7 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
                     if (match_length_found <= current_ngram) {
                         accumulated_score += *backoff;
                     } else {
-                        current_ngram = max_ngram;; //This will exit the while loop
+                        current_ngram = max_ngram; //This will exit the while loop
                     }
                 } else if (key == 0) {
                     accumulated_score += *prob;
@@ -211,7 +211,7 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
 
         updated_idx = current_btree_start + 4; //Update the index for the while loop
         //@TODO consider this for shared memory as oppposed to global mem broadcast to register
-        size = *(unsigned int *)&btree_trie_mem[current_btree_start];; //The size of the current node to process.
+        size = *(unsigned int *)&btree_trie_mem[current_btree_start]; //The size of the current node to process.
 
         //Initialize shared variable
         if (i < 2) {
