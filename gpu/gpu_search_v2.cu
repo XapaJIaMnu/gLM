@@ -81,7 +81,8 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
         goto backoff_notriecont;
     }
 
-    while (key != 0 && current_ngram < max_ngram - 1 && current_btree_start != 0) {
+    while ((key != 0 && current_ngram < max_ngram - 1 && current_btree_start != 0) || 
+        (get_backoff && key != 0 && current_ngram < max_ngram && current_btree_start != 0)) {
         current_ngram++;
         updated_idx = current_btree_start + 4; //Update the index for the while loop
         //@TODO consider this for shared memory as oppposed to global mem broadcast to register
@@ -89,7 +90,7 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
 
         //Initialize shared variable
         if (i < 2) {
-            booleans[i] = false;
+            booleans[i] = false; //Uset *exact_match and *is_last
         }
         __syncthreads();
 
@@ -189,15 +190,13 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
                     }
                 }
 
-                key = keys_shared[current_ngram];
+                key = keys_shared[current_ngram]; //@TODO this might be illegal memory access
                 __syncthreads();
                 current_btree_start = current_btree_start + *next_level*4;
 
                 if (get_backoff) {
-                    if (match_length_found <= current_ngram) {
+                    if (match_length_found < current_ngram) {
                         accumulated_score += *backoff;
-                    } else {
-                        current_ngram = max_ngram; //This will exit the while loop
                     }
                 } else if (key == 0) {
                     accumulated_score += *prob;
@@ -284,7 +283,8 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
                 }
                 __syncthreads(); //@TODO why is this necessary!?!?
             } else if (!*exact_match && is_last) {
-                goto backoff_notriecont;
+                current_ngram++; //This is necessary so that longest match logic is kept correct since in the while loop we
+                goto backoff_notriecont; //Increment this before actually finding the next level
             } else {
                 // We have an exact match, so we just need to add it to the payload and be done with it
                 if (i == 0) {

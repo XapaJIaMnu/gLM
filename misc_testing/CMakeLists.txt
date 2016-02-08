@@ -26,6 +26,17 @@ target_link_libraries(gpu_trie_test_v2
                       gpu_search_v2
                       )
                       
+add_executable(gpu_trie_test_binary_v2 gpu_trie_test_binary_v2.cpp)
+target_link_libraries(gpu_trie_test_binary_v2
+                      ${Boost_SERIALIZATION_LIBRARY}
+                      ${Boost_FILESYSTEM_LIBRARY}
+                      ${Boost_IOSTREAMS_LIBRARY}
+                      ${Boost_SYSTEM_LIBRARY}
+                      ${BZIP2_LIBRARIES}
+                      memory_management
+                      gpu_search_v2
+                      )
+                      
 add_executable(interactive_gpu_test interactive_gpu_test.cpp)
 target_link_libraries(interactive_gpu_test
                       memory_management
