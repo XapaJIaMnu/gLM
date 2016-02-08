@@ -235,6 +235,11 @@ void searchWrapper(unsigned char * global_mem, unsigned int * keys, unsigned int
         gpuSearchBtree<16, 16, 15, 5><<<num_ngram_queries, max_num_children>>>(global_mem, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
+    } else if (entries_per_node == 23) {
+        cudaEventRecord(start);
+        gpuSearchBtree<16, 24, 23, 5><<<num_ngram_queries, max_num_children>>>(global_mem, keys, results);
+        cudaEventRecord(stop);
+        cudaEventSynchronize(stop);
     } else if (entries_per_node == 31) {
         cudaEventRecord(start);
         gpuSearchBtree<16, 32, 31, 5><<<num_ngram_queries, max_num_children>>>(global_mem, keys, results);
@@ -260,6 +265,10 @@ void searchWrapper(unsigned char * global_mem, unsigned int * keys, unsigned int
         gpuSearchBtree<16, 512, 511, 5><<<num_ngram_queries, max_num_children>>>(global_mem, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
+    } else {
+        printf("No template argument for node size %d and number of ngrams %d. If you want to use this configuration add it in %s:%d.\n",
+         entries_per_node, max_ngram, __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
     }
 
     float milliseconds = 0;

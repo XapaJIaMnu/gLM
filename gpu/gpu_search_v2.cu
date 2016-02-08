@@ -54,12 +54,13 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
     }
     if (i < 3) {
         payload[i] = first_lvl[(key-1)*3 + i];
-        __syncthreads();
         //If this is the last non zero ngram  no need to go to the btree_trie. We already have
         //the payload value
         if (get_backoff && match_length_found <= current_ngram) {
+            __syncthreads(); //Likely necessary if we are backing off
             accumulated_score += *backoff;
         } else if (keys_shared[current_ngram + 1] == 0) {
+            __syncthreads(); //Likely necessary if we are backing off
             accumulated_score += *prob;
         }
     }
@@ -168,6 +169,7 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
                     // will be missing from the trie
                 } else {
                     get_backoff = true;
+                    __syncthreads(); //Necessary if -G is omitted
                     goto backoff_part2;
                 }
             } else {
@@ -204,11 +206,9 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
             }
         }
     }
-
     //Now fetch the last level if the key is not 0 or we backed off
     //key = keys_shared[current_ngram]; We already set the next key
     if (!get_backoff && key != 0) {
-
         updated_idx = current_btree_start + 4; //Update the index for the while loop
         //@TODO consider this for shared memory as oppposed to global mem broadcast to register
         size = *(unsigned int *)&btree_trie_mem[current_btree_start]; //The size of the current node to process.
@@ -299,6 +299,7 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
                                 + found_idx*(sizeof(float))]); //Skip the previous keys' payload
                     }
                 }
+                __syncthreads(); //Necessary if -G compilation option is omitted
             }
         }
     }
@@ -371,6 +372,10 @@ void searchWrapper(unsigned char * btree_trie_mem, unsigned int * first_lvl, uns
         gpuSearchBtree<512, 511, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
+    } else {
+        printf("No template argument for node size %d and number of ngrams %d. If you want to use this configuration add it in %s:%d.\n",
+         entries_per_node, max_ngram, __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
     }
 
     float milliseconds = 0;
