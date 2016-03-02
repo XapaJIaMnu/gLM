@@ -4,6 +4,7 @@
 #include <memory>
 #include <assert.h>
 #include <deque>
+#include <climits>
 #include "btree_v2.hh"
 #include <sstream>
 #include <set>
@@ -114,6 +115,12 @@ void array2balancedBtree(std::vector<unsigned char> &byte_arr, std::vector<Entry
                 offsets[i] += offsets[i-1]; //This will effectively compute prefix sum starting from first element.
             }
 
+            //for (auto entry : entries_to_insert) {
+            //    if (entry.vocabID == 67715) {
+            //        std::cout << "Here" << std::endl;
+            //    }
+            //}
+
             entry_v2_to_node(byte_arr, entries_to_insert, offsets, payload_size);
         }
     } 
@@ -171,7 +178,15 @@ void entry_v2_to_node(std::vector<unsigned char> &byte_arr, std::vector<Entry_v2
 
         //The rest of the elements are just unsigned shorts so cast them and copy them.
         for (unsigned int i = 1; i < offsets.size(); i++) {
-            unsigned short tmpnum = (unsigned short)offsets[i];
+            if (offsets[i]/4 > USHRT_MAX) {
+                std::cerr << "The btree node size chosen will cause an overflow in the btree. Sorry, but you will have to use a smaller value ; (" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            if (offsets[i] == 186680 || offsets[i] == 186680*4) {
+                std::cout << "here" << std::endl;
+            }
+            assert(offsets[i] % 4 == 0); //Sanity check
+            unsigned short tmpnum = (unsigned short)(offsets[i]/4);
             std::memcpy(&byte_arr[cur_byte_arr_idx], &tmpnum, sizeof(tmpnum));
             cur_byte_arr_idx += sizeof(tmpnum);
         }
@@ -235,7 +250,6 @@ Entry_with_offset searchBtree(std::vector<unsigned char> &byte_arr, size_t Btree
         result = searchNode(byte_arr, current_start_pos, node_size, vocabID, payload_size, BtreeNodeSize);
         current_start_pos = result.next_child_offset;
         node_size = result.next_child_size;
-        assert(current_start_pos < byte_arr.size());
         if (result.found) {
             result.currentBtreeStart = BtreeStartPosition;
             return result;
@@ -296,21 +310,23 @@ Entry_with_offset searchNode(std::vector<unsigned char> &byte_arr, size_t StartP
             size_t first_child_full_offset = StartPosition + *first_child_offset*4;
 
             //Get the size of the resulting node and additional offset for every consecutive child.
-            unsigned short additional_offset;
+            unsigned int additional_offset;
             unsigned int next_node_size;
             if (found.first == 0) {
                 additional_offset = 0;
-                next_node_size = next_children_offsets[found.first];
+                next_node_size = next_children_offsets[found.first]*4;
             } else {
-                additional_offset = next_children_offsets[found.first - 1];
-                next_node_size = next_children_offsets[found.first] - next_children_offsets[found.first - 1];
+                additional_offset = next_children_offsets[found.first - 1]*4;
+                next_node_size = next_children_offsets[found.first]*4 - next_children_offsets[found.first - 1]*4;
             }
             first_child_full_offset += additional_offset;
             result.next_child_offset = first_child_full_offset;
             result.next_child_size = next_node_size;
-            //std::cout << "Current start position: " << StartPosition << std::endl;
-            //std::cout << "Small first child offset: " << *first_child_offset << std::endl;
-            //std::cout << "First child total offset: " << first_child_full_offset << " next size: " << next_node_size << std::endl;
+            //Sanity check
+            if (next_node_size == 186680) {
+                std::cout << "here" << std::endl;
+            }
+            assert(first_child_full_offset < byte_arr.size());
         }
     }
     //Extract payloads if we have found the entry.

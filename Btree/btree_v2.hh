@@ -8,7 +8,7 @@ struct Entry_with_offset {
     float backoff;
     //Elements in case we need to go down in the trie
     size_t next_child_offset;
-    unsigned short next_child_size;
+    unsigned int next_child_size;
     //Those two will make debugging easier during development. They add a miniscule overhead so I will just leave them as they are.
     bool found;
     unsigned int found_idx;

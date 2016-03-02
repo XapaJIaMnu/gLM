@@ -153,10 +153,13 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
                 //Calculate the address and the size of the next child
                 updated_idx += *first_child_offset*4;
                 if (found_idx == 0) {
-                   size = offests_incremental[0]; //0 being found_idx but a bit faster cause we hardcode it
+                   size = offests_incremental[0]*4; //0 being found_idx but a bit faster cause we hardcode it
                 } else {
-                    updated_idx += offests_incremental[found_idx - 1];
-                    size = offests_incremental[found_idx] - offests_incremental[found_idx - 1];
+                    updated_idx += offests_incremental[found_idx - 1]*4;
+                    if (updated_idx > 1288849892 && i == 0) {
+                        printf("Whoops\n");
+                    }
+                    size = (offests_incremental[found_idx] - offests_incremental[found_idx - 1])*4;
                 }
                 __syncthreads(); //Necessary @TODO why is it necessary!?!?
             } else if (*is_last && !*exact_match) {
@@ -276,10 +279,13 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
                 //Calculate the address and the size of the next child
                 updated_idx += *first_child_offset*4;
                 if (found_idx == 0) {
-                   size = offests_incremental[0]; //0 being found_idx but a bit faster cause we hardcode it
+                   size = offests_incremental[0]*4; //0 being found_idx but a bit faster cause we hardcode it
                 } else {
-                    updated_idx += offests_incremental[found_idx - 1];
-                    size = offests_incremental[found_idx] - offests_incremental[found_idx - 1];
+                    updated_idx += offests_incremental[found_idx - 1]*4;
+                    if (updated_idx > 1288849892 && i == 0) {
+                        printf("Whoops\n");
+                    }
+                    size = (offests_incremental[found_idx] - offests_incremental[found_idx - 1])*4;
                 }
                 __syncthreads(); //@TODO why is this necessary!?!?
             } else if (!*exact_match && is_last) {
