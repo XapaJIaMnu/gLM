@@ -50,17 +50,18 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
         current_ngram = 1; //Set backoff in -1. If we run into this case again we need to do nothing
         key = keys_shared[current_ngram];
         get_backoff = true;
-        __syncthreads(); //Needed!
     }
+    __syncthreads(); //Needed!
     if (i < 3) {
         payload[i] = first_lvl[(key-1)*3 + i];
         //If this is the last non zero ngram  no need to go to the btree_trie. We already have
         //the payload value
+    }
+    __syncthreads();
+    if (i == 0) {
         if (get_backoff && match_length_found <= current_ngram) {
-            __syncthreads(); //Likely necessary if we are backing off
             accumulated_score += *backoff;
         } else if (keys_shared[current_ngram + 1] == 0) {
-            __syncthreads(); //Likely necessary if we are backing off
             accumulated_score += *prob;
         }
     }
