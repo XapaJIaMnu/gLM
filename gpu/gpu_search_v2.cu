@@ -5,15 +5,15 @@
 #define big_entry 16
 #define small_entry 8
 
-template<unsigned int max_num_children, unsigned int entries_per_node, unsigned int max_ngram>
-__global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * first_lvl, unsigned int * keys, float * results) {
+//template<unsigned int max_num_children, unsigned int entries_per_node, unsigned int max_ngram>
+__global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * first_lvl, unsigned int * keys, float * results, unsigned int max_num_children, unsigned int entries_per_node, unsigned int max_ngram) {
 
-    __shared__ unsigned int offsets[max_num_children/2 +1]; //Reads in the first child offset + the shorts
-    __shared__ unsigned int entries[entries_per_node];
+    __shared__ unsigned int offsets[17 +1]; //Reads in the first child offset + the shorts
+    __shared__ unsigned int entries[31];
     __shared__ unsigned int found_idx;
     __shared__ unsigned int booleans[2]; //booleans[0] = is_last; booleans[1] = exact_match
     __shared__ unsigned int payload[3]; //After we find the correct entry, load the payload here
-    __shared__ unsigned int keys_shared[max_ngram]; //Each block fetches from shared memory the max necessary number of keys
+    __shared__ unsigned int keys_shared[5]; //Each block fetches from shared memory the max necessary number of keys
 
     //Maybe we need to issue shared memory here to optimize it
     int i = threadIdx.x;
@@ -330,172 +330,172 @@ void searchWrapper(unsigned char * btree_trie_mem, unsigned int * first_lvl, uns
     */
     if (entries_per_node == 3) {
         cudaEventRecord(start);
-        gpuSearchBtree<4, 3, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<4, 3, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 5) {
         cudaEventRecord(start);
-        gpuSearchBtree<6, 5, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<6, 5, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 7) {
         cudaEventRecord(start);
-        gpuSearchBtree<8, 7, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<8, 7, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 9) {
         cudaEventRecord(start);
-        gpuSearchBtree<10, 9, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<10, 9, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 11) {
         cudaEventRecord(start);
-        gpuSearchBtree<12, 11, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<12, 11, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 13) {
         cudaEventRecord(start);
-        gpuSearchBtree<14, 13, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<14, 13, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 15) {
         cudaEventRecord(start);
-        gpuSearchBtree<16, 15, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<16, 15, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 17) {
         cudaEventRecord(start);
-        gpuSearchBtree<18, 17, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<18, 17, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 19) {
         cudaEventRecord(start);
-        gpuSearchBtree<20, 19, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<20, 19, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 21) {
         cudaEventRecord(start);
-        gpuSearchBtree<22, 21, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<22, 21, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 23) {
         cudaEventRecord(start);
-        gpuSearchBtree<24, 23, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<24, 23, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 25) {
         cudaEventRecord(start);
-        gpuSearchBtree<26, 25, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<26, 25, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 27) {
         cudaEventRecord(start);
-        gpuSearchBtree<28, 27, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<28, 27, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 29) {
         cudaEventRecord(start);
-        gpuSearchBtree<30, 29, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<30, 29, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 31) {
         cudaEventRecord(start);
-        gpuSearchBtree<32, 31, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        gpuSearchBtree<<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results, entries_per_node + 1, entries_per_node, max_ngram);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 33) {
         cudaEventRecord(start);
-        gpuSearchBtree<34, 33, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<34, 33, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 35) {
         cudaEventRecord(start);
-        gpuSearchBtree<36, 35, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<36, 35, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 37) {
         cudaEventRecord(start);
-        gpuSearchBtree<38, 37, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<38, 37, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 39) {
         cudaEventRecord(start);
-        gpuSearchBtree<40, 39, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<40, 39, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 41) {
         cudaEventRecord(start);
-        gpuSearchBtree<42, 41, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<42, 41, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 43) {
         cudaEventRecord(start);
-        gpuSearchBtree<44, 43, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<44, 43, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 45) {
         cudaEventRecord(start);
-        gpuSearchBtree<46, 45, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<46, 45, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 47) {
         cudaEventRecord(start);
-        gpuSearchBtree<48, 47, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<48, 47, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 49) {
         cudaEventRecord(start);
-        gpuSearchBtree<50, 49, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<50, 49, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 51) {
         cudaEventRecord(start);
-        gpuSearchBtree<52, 51, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<52, 51, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 53) {
         cudaEventRecord(start);
-        gpuSearchBtree<54, 53, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<54, 53, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 55) {
         cudaEventRecord(start);
-        gpuSearchBtree<56, 55, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<56, 55, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 57) {
         cudaEventRecord(start);
-        gpuSearchBtree<58, 57, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<58, 57, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 59) {
         cudaEventRecord(start);
-        gpuSearchBtree<60, 59, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<60, 59, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 61) {
         cudaEventRecord(start);
-        gpuSearchBtree<62, 61, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<62, 61, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 63) {
         cudaEventRecord(start);
-        gpuSearchBtree<64, 63, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<64, 63, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 127) {
         cudaEventRecord(start);
-        gpuSearchBtree<128, 127, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<128, 127, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 255) {
         cudaEventRecord(start);
-        gpuSearchBtree<256, 255, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<256, 255, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 511) {
         cudaEventRecord(start);
-        gpuSearchBtree<512, 511, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
+        //gpuSearchBtree<512, 511, 5><<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else {
