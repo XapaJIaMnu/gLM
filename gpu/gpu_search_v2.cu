@@ -4,16 +4,16 @@
 
 #define big_entry 16
 #define small_entry 8
-
+extern __shared__ unsigned int shared_mem[];
 //template<unsigned int max_num_children, unsigned int entries_per_node, unsigned int max_ngram>
 __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * first_lvl, unsigned int * keys, float * results, unsigned int max_num_children, unsigned int entries_per_node, unsigned int max_ngram) {
 
-    __shared__ unsigned int offsets[17 +1]; //Reads in the first child offset + the shorts
-    __shared__ unsigned int entries[31];
-    __shared__ unsigned int found_idx;
-    __shared__ unsigned int booleans[2]; //booleans[0] = is_last; booleans[1] = exact_match
-    __shared__ unsigned int payload[3]; //After we find the correct entry, load the payload here
-    __shared__ unsigned int keys_shared[5]; //Each block fetches from shared memory the max necessary number of keys
+    unsigned int * offsets = shared_mem; //Reads in the first child offset + the shorts
+    unsigned int * entries = &shared_mem[max_num_children/2 +1];
+    unsigned int * found_idx = &entries[entries_per_node];
+    unsigned int * booleans = &found_idx[1]; //booleans[0] = is_last; booleans[1] = exact_match
+    unsigned int * payload = &booleans[2]; //After we find the correct entry, load the payload here
+    unsigned int * keys_shared = &payload[3]; //Each block fetches from shared memory the max necessary number of keys
 
     //Maybe we need to issue shared memory here to optimize it
     int i = threadIdx.x;
@@ -129,14 +129,14 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
             //NOW search
             if (i == 0) {
                 if (key <= entries[i]) {
-                    found_idx = i;
+                    *found_idx = i;
                     if (key == entries[i]) {
                         *exact_match = true;
                     }
                 }
             } else if (i < num_entries) {
                 if (key > entries[i-1] && key <= entries[i]){
-                    found_idx = i;
+                    *found_idx = i;
                     if (key == entries[i]) {
                         *exact_match = true;
                     }
@@ -144,7 +144,7 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
             } else if (i == num_entries) {
                 //Case where our key is greater than the last available entry. We need to do a prefix sum of i+1 elements.
                 if (key > entries[i-1]) {
-                    found_idx = i;
+                    *found_idx = i;
                 }
             }
             __syncthreads();
@@ -153,11 +153,11 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
             if (!*exact_match && !*is_last) {
                 //Calculate the address and the size of the next child
                 updated_idx += *first_child_offset*4;
-                if (found_idx == 0) {
+                if (*found_idx == 0) {
                    size = offests_incremental[0]; //0 being found_idx but a bit faster cause we hardcode it
                 } else {
-                    updated_idx += offests_incremental[found_idx - 1];
-                    size = offests_incremental[found_idx] - offests_incremental[found_idx - 1];
+                    updated_idx += offests_incremental[*found_idx - 1];
+                    size = offests_incremental[*found_idx] - offests_incremental[*found_idx - 1];
                 }
                 __syncthreads(); //Necessary @TODO why is it necessary!?!?
             } else if (*is_last && !*exact_match) {
@@ -181,12 +181,12 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
                     //After the offsets and the keys, so we skip them and then we skip to the correct payload using found_idx
                     if (*is_last) {
                         payload[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + num_entries*sizeof(unsigned int) //Skip the keys
-                            + found_idx*(sizeof(unsigned int) + sizeof(float) + sizeof(float)) //Skip the previous keys' payload
+                            + *found_idx*(sizeof(unsigned int) + sizeof(float) + sizeof(float)) //Skip the previous keys' payload
                                 + i*sizeof(unsigned int)]); //Get next_level/prob/backoff
                     } else {
                         payload[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + sizeof(unsigned int) + max_num_children*sizeof(unsigned short) //Skip the offsets and first offset
                             + num_entries*sizeof(unsigned int) //Skip the keys
-                                + found_idx*(sizeof(unsigned int) + sizeof(float) + sizeof(float)) //Skip the previous keys' payload
+                                + *found_idx*(sizeof(unsigned int) + sizeof(float) + sizeof(float)) //Skip the previous keys' payload
                                     + i*sizeof(unsigned int)]);  //Get next_level/prob/backoff
                     }
                 }
@@ -252,14 +252,14 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
             //NOW search
             if (i == 0) {
                 if (key <= entries[i]) {
-                    found_idx = i;
+                    *found_idx = i;
                     if (key == entries[i]) {
                         *exact_match = true;
                     }
                 }
             } else if (i < num_entries) {
                 if (key > entries[i-1] && key <= entries[i]){
-                    found_idx = i;
+                    *found_idx = i;
                     if (key == entries[i]) {
                         *exact_match = true;
                     }
@@ -267,7 +267,7 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
             } else if (i == num_entries) {
                 //Case where our key is greater than the last available entry. We need to do a prefix sum of i+1 elements.
                 if (key > entries[i-1]) {
-                    found_idx = i;
+                    *found_idx = i;
                 }
             }
             __syncthreads();
@@ -276,11 +276,11 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
             if (!*exact_match && !*is_last) {
                 //Calculate the address and the size of the next child
                 updated_idx += *first_child_offset*4;
-                if (found_idx == 0) {
+                if (*found_idx == 0) {
                    size = offests_incremental[0]; //0 being found_idx but a bit faster cause we hardcode it
                 } else {
-                    updated_idx += offests_incremental[found_idx - 1];
-                    size = offests_incremental[found_idx] - offests_incremental[found_idx - 1];
+                    updated_idx += offests_incremental[*found_idx - 1];
+                    size = offests_incremental[*found_idx] - offests_incremental[*found_idx - 1];
                 }
                 __syncthreads(); //@TODO why is this necessary!?!?
             } else if (!*exact_match && is_last) {
@@ -293,11 +293,11 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
                     //After the offsets and the keys, so we skip them and then we skip to the correct payload using found_idx
                     if (*is_last) {
                         accumulated_score += *(float *)(&btree_trie_mem[updated_idx + num_entries*sizeof(unsigned int) //Skip the keys
-                            + found_idx*(sizeof(float))]); //Skip the previous keys' payload
+                            + *found_idx*(sizeof(float))]); //Skip the previous keys' payload
                     } else {
                         accumulated_score += *(float *)(&btree_trie_mem[updated_idx + sizeof(unsigned int) + max_num_children*sizeof(unsigned short) //Skip the offsets and first offset
                             + num_entries*sizeof(unsigned int) //Skip the keys
-                                + found_idx*(sizeof(float))]); //Skip the previous keys' payload
+                                + *found_idx*(sizeof(float))]); //Skip the previous keys' payload
                     }
                 }
                 __syncthreads(); //Necessary if -G compilation option is omitted
@@ -399,8 +399,9 @@ void searchWrapper(unsigned char * btree_trie_mem, unsigned int * first_lvl, uns
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 31) {
+        unsigned int shared_memory_size = (max_num_children/2 + 1 + entries_per_node + 1 + 2 + 3 + max_ngram)*sizeof(unsigned int);
         cudaEventRecord(start);
-        gpuSearchBtree<<<num_ngram_queries, max_num_children>>>(btree_trie_mem, first_lvl, keys, results, entries_per_node + 1, entries_per_node, max_ngram);
+        gpuSearchBtree<<<num_ngram_queries, max_num_children, shared_memory_size>>>(btree_trie_mem, first_lvl, keys, results, entries_per_node + 1, entries_per_node, max_ngram);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
     } else if (entries_per_node == 33) {
