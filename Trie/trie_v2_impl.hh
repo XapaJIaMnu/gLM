@@ -13,6 +13,10 @@ void createTrie(const StringType filename, LM& lm, unsigned short BtreeNodeSize)
     ArpaReader arpain(filename);
     processed_line text;
 
+    //Some info about BTree stumps
+    std::vector<size_t> stumps(arpain.max_ngrams - 1, 0); //Unigrams don't have stumps
+    std::vector<size_t> total_btrees(arpain.max_ngrams - 1, 0);
+
     //First level is just an array. Lay the elements as: next_level, prob, backoff. VocabID is a function of the index of the array
     do {
         text = arpain.readline();
@@ -66,6 +70,10 @@ void createTrie(const StringType filename, LM& lm, unsigned short BtreeNodeSize)
                 std::copy(ngram.ngrams.begin(), ngram.ngrams.begin() + current_ngram_size - 1, context.begin());
             } else {
                 //Add to the BtreeTrie
+                total_btrees[current_ngram_size - 2]++;
+                if (entries_to_insert.size() < BtreeNodeSize) {
+                    stumps[current_ngram_size - 2]++;
+                }
                 addBtreeToTrie(entries_to_insert, lm.trieByteArray, lm.first_lvl, context, BtreeNodeSize, lastNgram);
                 entries_to_insert.clear();
                 entries_to_insert.push_back(entry);
@@ -77,6 +85,10 @@ void createTrie(const StringType filename, LM& lm, unsigned short BtreeNodeSize)
         }
         //Handle the last case. Take the last entry from the ngrams vector
         std::copy(ngrams[ngrams.size() - 1].ngrams.begin(), ngrams[ngrams.size() - 1].ngrams.begin() + current_ngram_size - 1, context.begin());
+        total_btrees[current_ngram_size - 2]++;
+        if (entries_to_insert.size() < BtreeNodeSize) {
+            stumps[current_ngram_size - 2]++;
+        }
         addBtreeToTrie(entries_to_insert, lm.trieByteArray, lm.first_lvl, context, BtreeNodeSize, lastNgram);
         entries_to_insert.clear();
 
@@ -89,6 +101,12 @@ void createTrie(const StringType filename, LM& lm, unsigned short BtreeNodeSize)
     lm.metadata.intArraySize = lm.first_lvl.size();
     lm.encode_map = arpain.encode_map;
     lm.decode_map = arpain.decode_map;
+
+    //Print stumps statistics:
+    for (unsigned int i = 0; i < stumps.size(); i++) {
+        std::cout << "There are: " << stumps[i] << " stumps among " << i + 2 << "grams out of " <<
+        total_btrees[i] << " BTrees in total." << std::endl;
+    }
 
 }
 
