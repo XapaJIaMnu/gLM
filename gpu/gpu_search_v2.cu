@@ -507,6 +507,7 @@ void searchWrapper(unsigned char * btree_trie_mem, unsigned int * first_lvl, uns
     float milliseconds = 0;
     cudaEventElapsedTime(&milliseconds, start, stop);
     printf("Searched for %d ngrams in: %f milliseconds.\n", num_ngram_queries, milliseconds);
+    printf("Throughput: %d queries per second.\n", (int)((num_ngram_queries/(milliseconds))*1000));
 }
 
 void cudaDevSync() {
