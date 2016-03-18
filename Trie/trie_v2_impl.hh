@@ -71,7 +71,7 @@ void createTrie(const StringType filename, LM& lm, unsigned short BtreeNodeSize)
             } else {
                 //Add to the BtreeTrie
                 total_btrees[current_ngram_size - 2]++;
-                if (entries_to_insert.size() < BtreeNodeSize) {
+                if (entries_to_insert.size() <= BtreeNodeSize) {
                     stumps[current_ngram_size - 2]++;
                 }
                 addBtreeToTrie(entries_to_insert, lm.trieByteArray, lm.first_lvl, context, BtreeNodeSize, lastNgram);
@@ -86,7 +86,7 @@ void createTrie(const StringType filename, LM& lm, unsigned short BtreeNodeSize)
         //Handle the last case. Take the last entry from the ngrams vector
         std::copy(ngrams[ngrams.size() - 1].ngrams.begin(), ngrams[ngrams.size() - 1].ngrams.begin() + current_ngram_size - 1, context.begin());
         total_btrees[current_ngram_size - 2]++;
-        if (entries_to_insert.size() < BtreeNodeSize) {
+        if (entries_to_insert.size() <= BtreeNodeSize) {
             stumps[current_ngram_size - 2]++;
         }
         addBtreeToTrie(entries_to_insert, lm.trieByteArray, lm.first_lvl, context, BtreeNodeSize, lastNgram);
