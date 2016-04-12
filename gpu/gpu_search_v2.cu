@@ -159,7 +159,6 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
                     updated_idx += offests_incremental[found_idx - 1];
                     size = offests_incremental[found_idx] - offests_incremental[found_idx - 1];
                 }
-                __syncthreads(); //Necessary @TODO why is it necessary!?!?
             } else if (*is_last && !*exact_match) {
                 //In this case we didn't find the key that we were looking for
                 //What we should do is get the probability of the last node that we found
@@ -171,7 +170,7 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
                     // will be missing from the trie
                 } else {
                     get_backoff = true;
-                    __syncthreads(); //Necessary if -G is omitted
+                    __syncthreads(); //Necessary
                     goto backoff_part2;
                 }
             } else {
@@ -282,7 +281,6 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
                     updated_idx += offests_incremental[found_idx - 1];
                     size = offests_incremental[found_idx] - offests_incremental[found_idx - 1];
                 }
-                __syncthreads(); //@TODO why is this necessary!?!?
             } else if (!*exact_match && is_last) {
                 current_ngram++; //This is necessary so that longest match logic is kept correct since in the while loop we
                 goto backoff_notriecont; //Increment this before actually finding the next level
@@ -300,7 +298,6 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
                                 + found_idx*(sizeof(float))]); //Skip the previous keys' payload
                     }
                 }
-                __syncthreads(); //Necessary if -G compilation option is omitted
             }
         }
     }
