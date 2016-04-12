@@ -1,4 +1,4 @@
-#include "btree_v2_impl.hh"
+#include "btree_v2.hh"
 #include <stdlib.h>
 #include <set>
 #include <algorithm>
@@ -6,16 +6,12 @@
 int main(int argc, char* argv[]) {
     unsigned int BtreeNodeSize = 3;
     bool lastNgram = false;
-    const char * filename1 = "graph.dot";
-    const char * filename2 = "graph_compressed.dot";
     unsigned int num_entries = 25;
 
-    if (argc == 6) {
+    if (argc == 4) {
         BtreeNodeSize = atoi(argv[1]);
         num_entries = atoi(argv[2]);
-        filename1 = argv[3];
-        filename2 = argv[4];
-        lastNgram = (bool)atoi(argv[5]);
+        lastNgram = (bool)atoi(argv[3]);
     }
 
     std::set<unsigned int> prev_nums; //Used to see if we have duplicating nums
@@ -34,12 +30,12 @@ int main(int argc, char* argv[]) {
 
     std::vector<unsigned char> btree_byte_arr;
     array2balancedBtree(btree_byte_arr, array, BtreeNodeSize, lastNgram);
-
+/*
     for (auto entry : array) {
         Entry_with_offset test = searchBtree(btree_byte_arr, 0, BtreeNodeSize, entry.vocabID, lastNgram);
-        //std::cout << test.vocabID << std::endl;
+        std::cout << test.vocabID << std::endl;
     }
-
+*/
     std::pair<bool, std::string> res = test_btree_v2(num_entries, BtreeNodeSize, lastNgram);
     if (!res.first) {
         std::cout << res.second;

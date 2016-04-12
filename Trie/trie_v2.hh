@@ -1,4 +1,4 @@
-#include "btree_v2_impl.hh"
+#include "btree_v2.hh"
 #include "tokenizer.hh"
 #include "lm.hh"
 

@@ -1,4 +1,4 @@
-#include "trie_v2_impl.hh"
+#include "trie_v2.hh"
 
 int main(int argc, char* argv[]) {
     //LM lm;

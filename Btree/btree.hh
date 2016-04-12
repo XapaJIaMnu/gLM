@@ -4,7 +4,7 @@
 #include <math.h>
 #include <fstream>
 #include <stdlib.h>
-#include "structs.hh"
+#include "structs_v2.hh"
 #include <set>
 #include <iterator>
 #include <sstream>

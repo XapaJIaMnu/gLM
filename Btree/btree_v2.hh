@@ -1,4 +1,7 @@
-#include "structs.hh" 
+#include "structs_v2.hh"
+#include <vector>
+#include <iostream>
+#include <cstring>
 
 //A special struct for searching the BTree
 struct Entry_with_offset {
@@ -24,3 +27,4 @@ Entry_with_offset searchBtree(std::vector<unsigned char> &byte_arr, size_t Btree
 std::pair<unsigned int, bool> linearSearch(unsigned int * arr_to_search, unsigned int size, unsigned int vocabID);
 Entry_with_offset searchNode(std::vector<unsigned char> &byte_arr, size_t StartPosition, unsigned int node_size, unsigned int vocabID,
  unsigned short payload_size, unsigned short BtreeNodeSize);
+std::pair<bool, std::string> test_btree_v2(unsigned int num_elements, unsigned short BtreeNodeSize, bool lastNgram);
