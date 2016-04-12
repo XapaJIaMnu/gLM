@@ -105,7 +105,7 @@ void createTrie(const StringType filename, LM& lm, unsigned short BtreeNodeSize)
     //Print stumps statistics:
     for (unsigned int i = 0; i < stumps.size(); i++) {
         std::cout << "There are: " << stumps[i] << " stumps among " << i + 2 << "grams out of " <<
-        total_btrees[i] << " BTrees in total." << std::endl;
+        total_btrees[i] << " BTrees in total, " << ((double)stumps[i]/(double)total_btrees[i])*100 << " % of all."<< std::endl;
     }
 
 }
