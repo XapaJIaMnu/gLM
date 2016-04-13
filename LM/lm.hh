@@ -1,6 +1,8 @@
 #define API_VERSION 2.1
 #include <iostream>
 #include <fstream>
+#include <iterator>
+#include <algorithm>
 #include <string>
 //Since boost compressed IO streams are SLOW as hell, use mmap'd IO
 #include <sys/mman.h>

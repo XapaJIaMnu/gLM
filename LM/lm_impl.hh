@@ -187,4 +187,11 @@ void * readMmapTrie(const char * filename, size_t size) {
     }
 
     return map;
-} 
+}
+
+template<class T, class StringType>
+void * readInVector(std::vector<T>& vec, StringType filename, size_t size ) {
+    std::ifstream INFILE(filename, std::ios::in | std::ifstream::binary);
+    std::istreambuf_iterator<char> iter(INFILE);
+    //std::copy(iter.begin(), iter.end(), std::back_inserter(vec));
+}
