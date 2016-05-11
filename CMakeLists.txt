@@ -1,14 +1,26 @@
 cmake_minimum_required (VERSION 3.0)
 project (gLM C CXX)
 
-#Debug build by default!
+set(DEBUGBUILD 0)
+#Release build by default
 if (DEFINED BUILDTYPE)
-    SET (CMAKE_CXX_FLAGS                "-O3 -Wall -std=c++11 -DNDEBUG")
-    message("Building a release build with -O3. Buildtype is: " ${BUILDTYPE})
+    if (${BUILDTYPE} STREQUAL "release")
+        message("Building a release build with -O3.")
+    elseif(${BUILDTYPE} STREQUAL "debug")
+        set(DEBUGBUILD 1)
+        message("Building a debug build.")
+    else()
+        message(SEND_ERROR "Unrecognized build type. Valid values are \"release\" or \"debug\". Building a release build.")
+    endif()
 else()
+        message("Building a release build with -O3.")
+endif()
+
+if(${DEBUGBUILD} EQUAL 1)
     SET (CMAKE_CXX_FLAGS                "-g -Wall -std=c++11")
     SET (CMAKE_CXX_FLAGS_DEBUG          "-g")
-    message("Building a debug build.")
+else()
+    SET (CMAKE_CXX_FLAGS                "-O3 -Wall -std=c++11 -DNDEBUG")
 endif()
 
 #Add include directories

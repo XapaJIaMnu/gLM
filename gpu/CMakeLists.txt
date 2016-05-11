@@ -1,5 +1,5 @@
 find_package(CUDA REQUIRED) # For when we add CUDA files
-if (DEFINED BUILDTYPE)
+if (${DEBUGBUILD} EQUAL 0)
     set(CUDA_NVCC_FLAGS "-arch=compute_52; -code=sm_52; -lcudart; -O3")
 else()
     set(CUDA_NVCC_FLAGS "-arch=compute_52; -code=sm_52; -lcudart; -g; -G")
