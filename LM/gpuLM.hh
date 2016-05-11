@@ -1,4 +1,4 @@
-#include "gpu_LM_utils_v2.hh"
+#include "../gpu/gpu_LM_utils_v2.hh"
 #include "lm_impl.hh"
 
 class gpuLM {

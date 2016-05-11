@@ -1,4 +1,4 @@
-#include "structs.hh" 
+#include "../misc/structs.hh" 
 
 //A special struct for searching the BTree
 struct Entry_with_offset {

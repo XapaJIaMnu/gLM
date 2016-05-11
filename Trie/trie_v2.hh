@@ -1,6 +1,6 @@
-#include "btree_v2_impl.hh"
-#include "tokenizer.hh"
-#include "lm.hh"
+#include "../Btree/btree_v2_impl.hh"
+#include "../Parser/tokenizer.hh"
+#include "../LM/lm.hh"
 
 template<class StringType>
 void createTrie(const StringType filename, LM& lm, unsigned short BtreeNodeSize);
