@@ -1,52 +1,112 @@
 #ifndef API_VERSION //Means we have included the lm.h header, so we don't need it
     #include "lm.hh"
 #endif 
-//Use boost to serialize the vectors
-#include <boost/archive/text_oarchive.hpp>
-#include <boost/archive/text_iarchive.hpp>
-#include <boost/serialization/vector.hpp>
-#include <boost/serialization/unordered_map.hpp>
+
+#include <type_traits>
+#include <boost/tokenizer.hpp>
 #include <boost/filesystem.hpp>
 
-//Compress the binary format to bzip2
-#include <boost/iostreams/filtering_stream.hpp>
-#include <boost/iostreams/filter/bzip2.hpp> 
-
-template<class StringType, class DataStructure>
-void serializeDatastructure(DataStructure& byte_arr, const StringType path){
-    std::ofstream os (path, std::ios::binary);
-
-    {// The boost archive needs to be in a separate scope otherwise it doesn't flush properly
-        //Create a bzip2 compressed filtered stream
-        boost::iostreams::filtering_stream<boost::iostreams::output> filtered_stream;
-        filtered_stream.push(boost::iostreams::bzip2_compressor());
-        filtered_stream.push(os);
-
-        boost::archive::text_oarchive oarch(filtered_stream);
-        oarch << byte_arr;
+template<class StringType, class MapType>
+void serializeDatastructure(MapType& map, const StringType path){
+    std::ofstream os(path);
+    typename MapType::const_iterator iter;
+    os << map.size() << std::endl;
+    for (iter = map.begin(); iter != map.end(); ++iter) {
+        os << iter->first << '\t' << iter->second << std::endl;
     }
-    os.close();
+
+  os.close();
 }
 
-//The byte_arr vector should be reserved to prevent constant realocation.
-template<class StringType, class DataStructure>
-void readDatastructure(DataStructure& byte_arr, const StringType path){
-    std::ifstream is (path, std::ios::binary);
+/*@TODO make this work with templates
+template<class StringType, class MapType>
+void readDatastructure(MapType& map, const StringType path) {
+    std::ifstream is(path);
 
     if (is.fail() ){
         std::cerr << "Failed to open file " << path << std::endl;
         std::exit(EXIT_FAILURE);
     }
-    {// The boost archive needs to be in a separate scope otherwise it doesn't flush properly
-        //Create a bzip2 compressed filtered stream for decopression
-        boost::iostreams::filtering_stream<boost::iostreams::input> filtered_stream;
-        filtered_stream.push(boost::iostreams::bzip2_decompressor());
-        filtered_stream.push(is);
-
-        boost::archive::text_iarchive iarch(filtered_stream);
-        iarch >> byte_arr;
+    
+    std::pair<typename MapType::key_type, typename MapType::mapped_type> map_pair;
+    std::string line;
+    getline(is, line);
+    unsigned int mapsize = std::stoull(line.c_str());
+    map.reserve(mapsize);
+    while (getline(is, line)) {
+        boost::char_separator<char> sep("\t");
+        boost::tokenizer<boost::char_separator<char> > tokens(line, sep);
+        boost::tokenizer<boost::char_separator<char> >::iterator it = tokens.begin();
+        if (std::is_same<typename MapType::key_type, std::string>::value) {
+            map_pair.first = *it;
+            it++;
+            map_pair.second = std::stoull(it->c_str());
+        } else {
+            map_pair.first = std::stoull(it->c_str());
+            it++;
+            map_pair.second = *it;
+        }
+        map.insert(map_pair);
     }
-    is.close();
+
+  //Close the stream after we are done.
+  is.close();
+}
+*/
+template<class StringType>
+void readDatastructure(std::unordered_map<std::string, unsigned int>& map, const StringType path) {
+    std::ifstream is(path);
+
+    if (is.fail() ){
+        std::cerr << "Failed to open file " << path << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
+    
+    std::pair<std::string, unsigned int> map_pair;
+    std::string line;
+    getline(is, line);
+    unsigned int mapsize = std::stoull(line.c_str());
+    map.reserve(mapsize);
+    while (getline(is, line)) {
+        boost::char_separator<char> sep("\t");
+        boost::tokenizer<boost::char_separator<char> > tokens(line, sep);
+        boost::tokenizer<boost::char_separator<char> >::iterator it = tokens.begin();
+        map_pair.first = *it;
+        it++;
+        map_pair.second = std::stoull(it->c_str());;
+        map.insert(map_pair);
+    }
+
+  //Close the stream after we are done.
+  is.close();
+}
+
+template<class StringType>
+void readDatastructure(std::unordered_map<unsigned int, std::string>& map, const StringType path) {
+    std::ifstream is(path);
+
+    if (is.fail() ){
+        std::cerr << "Failed to open file " << path << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
+    
+    std::pair<unsigned int, std::string> map_pair;
+    std::string line;
+    getline(is, line);
+    unsigned int mapsize = std::stoull(line.c_str());
+    map.reserve(mapsize);
+    while (getline(is, line)) {
+        boost::char_separator<char> sep("\t");
+        boost::tokenizer<boost::char_separator<char> > tokens(line, sep);
+        boost::tokenizer<boost::char_separator<char> >::iterator it = tokens.begin();
+        map_pair.first = std::stoull(it->c_str());
+        it++;
+        map_pair.second = *it;
+        map.insert(map_pair);
+    }
+
+  //Close the stream after we are done.
+  is.close();
 }
 
 template<class StringType>
@@ -194,4 +254,7 @@ void * readInVector(std::vector<T>& vec, StringType filename, size_t size ) {
     std::ifstream INFILE(filename, std::ios::in | std::ifstream::binary);
     std::istreambuf_iterator<char> iter(INFILE);
     //std::copy(iter.begin(), iter.end(), std::back_inserter(vec));
+
+    void * foo;
+    return foo;
 }
