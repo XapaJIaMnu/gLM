@@ -309,7 +309,7 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(Serialization)
 
-BOOST_AUTO_TEST_CASE(serialization_mmap_test) {
+BOOST_AUTO_TEST_CASE(serialization_test) {
     std::string filepath = "/tmp/";
     const long double sysTime = time(0);
     std::stringstream s;

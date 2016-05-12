@@ -1,4 +1,4 @@
-find_package(Boost COMPONENTS unit_test_framework serialization filesystem iostreams system REQUIRED)
+find_package(Boost COMPONENTS unit_test_framework filesystem system REQUIRED)
 
 find_package(BZip2 REQUIRED)
 
@@ -9,21 +9,15 @@ add_executable(tests tests.cpp)
 
 target_link_libraries(tests
                       ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
-                      ${Boost_SERIALIZATION_LIBRARY}
                       ${Boost_FILESYSTEM_LIBRARY}
                       ${Boost_SYSTEM_LIBRARY}
-                      ${Boost_IOSTREAMS_LIBRARY}
-                      ${BZIP2_LIBRARIES}
                     )
                     
 add_executable(lm_tests lm_tests.cpp)
 target_link_libraries(lm_tests
                       ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
-                      ${Boost_SERIALIZATION_LIBRARY}
                       ${Boost_FILESYSTEM_LIBRARY}
                       ${Boost_SYSTEM_LIBRARY}
-                      ${Boost_IOSTREAMS_LIBRARY}
-                      ${BZIP2_LIBRARIES}
                     )
                     
 add_executable(btree_tests btree_tests.cpp)
@@ -41,6 +35,8 @@ target_link_libraries(gpu_tests_suite
 add_executable(gpu_tests_suite_v2 gpu_test_suite_v2.cpp)
 target_link_libraries(gpu_tests_suite_v2
                       ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
+                      ${Boost_FILESYSTEM_LIBRARY}
+                      ${Boost_SYSTEM_LIBRARY}
                       memory_management
                       gpu_search_v2
                      )
