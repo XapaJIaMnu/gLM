@@ -28,6 +28,10 @@ class gpuLM {
 			allocateGPUMem(max_num_queries*lm.metadata.max_ngram_order, &query_input);
 		}
 
+        unsigned short getMaxNumNgrams() {
+            return lm.metadata.max_ngram_order;
+        }
+
         std::unordered_map<std::string, unsigned int>& getEncodeMap() {
             return lm.encode_map;
         }
