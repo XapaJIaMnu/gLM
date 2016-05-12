@@ -21,3 +21,4 @@ void copyToHostMemory(float * gpu_mem, float * cpu_mem, size_t num_elements);
 void copyToHostMemory(unsigned int * gpu_mem, unsigned int * cpu_mem, size_t num_elements);
 void pinnedMemoryAllocator(unsigned int * pinned_mem, size_t num_elements);
 void pinnedMemoryAllocator(float * pinned_mem, size_t num_elements);
+void pinnedMemoryDeallocator(void * pinned_mem);
