@@ -1,3 +1,4 @@
+#pragma once
 #include <vector>
 #include <utility>
 #include <iostream>
@@ -642,7 +643,7 @@ void B_tree::insert_entry(Entry value) {
     size++;
 }
 
-void print_node(B_tree_node * node) {
+inline void print_node(B_tree_node * node) {
     std::cout << std::endl << "Node_ID: " << node << std::endl;
     if (node->parent) {
         std::cout << "Parent is: " << node->parent;
@@ -664,7 +665,7 @@ void B_tree::draw_tree() {
     print_node(root_node);
 }
 
-void draw_node(B_tree_node * node, std::ofstream& filehandle, int num_child) {
+inline void draw_node(B_tree_node * node, std::ofstream& filehandle, int num_child) {
 
     filehandle << "node" << node << "[label = \"<f0> ";
     for (size_t i = 0; i<node->words.size(); i++) {
@@ -692,7 +693,7 @@ void B_tree::produce_graph(const char * filename) {
     graphfile.close();
 }
 
-void B_tree_node_reconstruct(B_tree_node_rec& target, std::vector<unsigned char>& byte_arr, unsigned int start, unsigned short size,
+inline void B_tree_node_reconstruct(B_tree_node_rec& target, std::vector<unsigned char>& byte_arr, unsigned int start, unsigned short size,
     unsigned short max_btree_node_size, bool pointer2Index = false){
     //Populates the given B_tree_node_reconstruct knowing the byte_arr, the start index and the size of the first item.
     bool last;
@@ -792,7 +793,7 @@ std::pair<bool, Entry> search_byte_arr(std::vector<unsigned char>& byte_arr, Ent
 
 }
 
-std::pair<bool, std::string> test_btree_array(std::set<unsigned int>& input, std::vector<unsigned char>& byte_arr,
+inline std::pair<bool, std::string> test_btree_array(std::set<unsigned int>& input, std::vector<unsigned char>& byte_arr,
     unsigned short max_btree_node_size, bool pointer2Index = false) {
     bool passes = true;
     int counter = 0;
@@ -811,7 +812,7 @@ std::pair<bool, std::string> test_btree_array(std::set<unsigned int>& input, std
 }
 
 
-std::pair<bool, std::string> test_btree(std::set<unsigned int> &input, B_tree * tree) {
+inline std::pair<bool, std::string> test_btree(std::set<unsigned int> &input, B_tree * tree) {
 
     B_tree_node * root_node = tree->root_node;
     Pseudo_btree_iterator * iter = new Pseudo_btree_iterator(root_node);

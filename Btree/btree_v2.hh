@@ -1,3 +1,4 @@
+#pragma once
 #include "../misc/structs.hh" 
 
 //A special struct for searching the BTree

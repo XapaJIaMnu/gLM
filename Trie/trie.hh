@@ -1,3 +1,4 @@
+#pragma once
 #include "btree.hh"
 #include "tokenizer.hh"
 #include <limits>

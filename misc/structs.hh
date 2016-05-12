@@ -1,11 +1,11 @@
+#pragma once
 #include <vector>
 #include <map>
 #include <cstring>
 #include <iostream>
 #include "entry_structs.hh"
-#pragma once
 
-void EntriesToByteArray(std::vector<unsigned char> &byte_array, std::vector<Entry> &entries, bool pointer2Index = false) {
+inline void EntriesToByteArray(std::vector<unsigned char> &byte_array, std::vector<Entry> &entries, bool pointer2Index = false) {
     //Appends a multitude of entries to the byte array.
     //Entries are stored in the following way: ALLKEYS_datakey1_datakey2_etc
     //This is a bit counter intuitive but permits for better memory accesses on the gpu and is similar to a b+tree
@@ -44,7 +44,7 @@ void EntriesToByteArray(std::vector<unsigned char> &byte_array, std::vector<Entr
     }
 }
 
-Entry * byteArrayToEntries(std::vector<unsigned char> &byte_array, int num_entries, unsigned int start_idx, bool pointer2Index = false) {
+inline Entry * byteArrayToEntries(std::vector<unsigned char> &byte_array, int num_entries, unsigned int start_idx, bool pointer2Index = false) {
     //We return a pointer to array of entries. Burden of free is on the calling function!!!
     Entry * entries = new Entry[num_entries];
     unsigned int current_idx = start_idx;

@@ -1,3 +1,4 @@
+#pragma once
 #include <iostream>
 #include <string>
 #include <boost/tokenizer.hpp>
@@ -16,23 +17,23 @@ struct processed_line {
 };
 
 //Sorting processed_line
-bool operator> (const processed_line &left, const processed_line &right) {
+inline bool operator> (const processed_line &left, const processed_line &right) {
     return (left.ngrams > right.ngrams);
 }
 
-bool operator< (const processed_line &left, const processed_line &right) {
+inline bool operator< (const processed_line &left, const processed_line &right) {
     return (left.ngrams < right.ngrams);
 }
 
-bool operator== (const processed_line &left, const processed_line &right) {
+inline bool operator== (const processed_line &left, const processed_line &right) {
     return (left.ngrams == right.ngrams);
 }
 
-bool operator!= (const processed_line &left, const processed_line &right) {
+inline bool operator!= (const processed_line &left, const processed_line &right) {
     return (left.ngrams != right.ngrams);
 }
 
-std::ostream& operator<< (std::ostream &out, processed_line &line) {
+inline std::ostream& operator<< (std::ostream &out, processed_line &line) {
     out << "Number of ngrams: " << line.ngram_size << " End of file: " << line.filefinished << "\n" << line.score << ' ';
     for (int i = 0; i < line.ngram_size; i++) {
         out << line.ngrams[i] << ' ';
@@ -97,7 +98,7 @@ ArpaReader::ArpaReader(const StringType filename) {
     next_ngrams_boundary.at(1) = std::to_string(state+1).c_str()[0];
 };
 
-processed_line ArpaReader::readline() {
+inline processed_line ArpaReader::readline() {
     processed_line rettext;
     rettext.filefinished = false;
     bool unk = false; //Are we at the <unk> token

@@ -1,3 +1,4 @@
+#pragma once
 //#include "tokenizer.hh"
 #include "memory_management.hh"
 #include "gpu_search.hh"

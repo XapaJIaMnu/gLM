@@ -5,5 +5,4 @@ add_library(gLM STATIC gpuLM.cpp)
 target_link_libraries(gLM
                       ${Boost_FILESYSTEM_LIBRARY}
                       ${Boost_SYSTEM_LIBRARY}
-                      memory_management
-                      gpu_search)
+                      )

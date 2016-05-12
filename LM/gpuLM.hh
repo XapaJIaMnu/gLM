@@ -1,3 +1,5 @@
+#pragma once
+
 #include "../gpu/gpu_LM_utils_v2.hh"
 #include "lm_impl.hh"
 
@@ -13,8 +15,19 @@ class gpuLM {
         float * query_output;
 
     public:
-        template<class StringType>
-        gpuLM(StringType, size_t);
+		template<class StringType>
+		gpuLM(StringType path, size_t max_num_queries) : lm(path) {
+			//Create GPU objects here
+			//@TODO remove CPU LM after copy, we don't care about it anymore.
+			//@TODO in fact we need to redo the whole LM so it doesn't hog so much memory.
+			btree_trie_gpu = copyToGPUMemory(lm.trieByteArray.data(), lm.trieByteArray.size());
+			first_lvl_gpu = copyToGPUMemory(lm.first_lvl.data(), lm.first_lvl.size());
+
+			//Allocate max memory input and output queries
+			allocateGPUMem(max_num_queries, &query_output);
+			allocateGPUMem(max_num_queries*lm.metadata.max_ngram_order, &query_input);
+		}
+
         std::unordered_map<std::string, unsigned int>& getEncodeMap() {
             return lm.encode_map;
         }

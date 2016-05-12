@@ -1,3 +1,5 @@
+#pragma once
+
 class B_tree; //Forward declaration
 
 struct Entry_v2 {
@@ -125,7 +127,7 @@ inline bool operator!= (const Entry_v2 &left, const unsigned int &right) {
 }
 
 
-unsigned char getEntrySize(bool pointer2Index = false) {
+inline unsigned char getEntrySize(bool pointer2Index = false) {
     /*This function returns the size of all individual components of the struct.
     It is necessary because we store either the B_tree * next_level or the offset, never both*/
     if (pointer2Index) { //Use the pointer as index offset

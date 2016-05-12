@@ -1,3 +1,4 @@
+#pragma once
 #include "memory_management.hh"
 #include "gpu_search.hh"
 #include "trie.hh"
@@ -66,7 +67,7 @@ std::pair<bool, std::string> testQueryNgrams(LM& lm, unsigned char * gpuByteArra
 }
 
 //Converts a raw sentence into one suitable for generating ngrams from, with vocabIDs
-std::vector<unsigned int> sent2vocabIDs(LM &lm, std::vector<std::string> input, bool addBeginEndMarkers) {
+inline std::vector<unsigned int> sent2vocabIDs(LM &lm, std::vector<std::string> input, bool addBeginEndMarkers) {
     std::vector<unsigned int> ret;
     if (addBeginEndMarkers) {
         ret.reserve(input.size() + 2);
@@ -95,7 +96,7 @@ std::vector<unsigned int> sent2vocabIDs(LM &lm, std::vector<std::string> input, 
     return ret;
 }
 
-std::vector<unsigned int> vocabIDsent2queries(std::vector<unsigned int> vocabIDs, unsigned short ngram_order) {
+inline std::vector<unsigned int> vocabIDsent2queries(std::vector<unsigned int> vocabIDs, unsigned short ngram_order) {
     std::vector<unsigned int> ret;
     ret.reserve((vocabIDs.size() - 1)*ngram_order);
     int front_idx = 0;
@@ -124,7 +125,7 @@ std::vector<unsigned int> vocabIDsent2queries(std::vector<unsigned int> vocabIDs
     return ret;
 }
 
-std::vector<std::string> interactiveRead(LM &lm, unsigned char * gpuByteArray, bool addBeginEndMarkers = true) {
+inline std::vector<std::string> interactiveRead(LM &lm, unsigned char * gpuByteArray, bool addBeginEndMarkers = true) {
     std::string response;
     boost::char_separator<char> sep(" ");
     unsigned int entrySize = getEntrySize(/*pointer2index =*/ true);
@@ -180,7 +181,7 @@ std::vector<std::string> interactiveRead(LM &lm, unsigned char * gpuByteArray, b
     return std::vector<std::string>{std::string("pesho")};
 }
 
-unsigned int sent2QueryVec(std::string& sentence, std::vector<unsigned int>& all_queries, LM& lm, bool addBeginEndMarkers) {
+inline unsigned int sent2QueryVec(std::string& sentence, std::vector<unsigned int>& all_queries, LM& lm, bool addBeginEndMarkers) {
     //Tokenize
     boost::char_separator<char> sep(" ");
     std::vector<std::string> tokenized_sentence;

@@ -1,3 +1,4 @@
+#pragma once
 #ifndef API_VERSION //Means we have included the lm.h header, so we don't need it
     #include "lm.hh"
 #endif 
@@ -227,7 +228,7 @@ LM::LM(const StringType path) {
     }
 }
 
-void * readMmapTrie(const char * filename, size_t size) {
+inline void * readMmapTrie(const char * filename, size_t size) {
     //Initial position of the file is the end of the file, thus we know the size
     int fd;
     void * map;

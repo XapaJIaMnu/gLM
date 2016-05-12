@@ -1,3 +1,4 @@
+#pragma once
 #include <stdio.h>
 
 //Wrapper to call on the gpu

@@ -1,3 +1,4 @@
+#pragma once
 #include <stddef.h>
 
 unsigned char * copyToGPUMemory(unsigned char * byte_arr, size_t byte_arr_size);

@@ -1,3 +1,4 @@
+#pragma once
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE Suites
 #define FLOAT_TOLERANCE 1e-5*1e-5

@@ -1,3 +1,5 @@
+#pragma once
+
 #define API_VERSION 2.2
 #include <iostream>
 #include <fstream>
@@ -10,7 +12,6 @@
 #include <vector>
 #include <unordered_map>
 #include <iostream>
-#pragma once
 
 //Metadata to write on a config file.
 struct LM_metadata {

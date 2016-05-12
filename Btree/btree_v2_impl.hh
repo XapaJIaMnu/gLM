@@ -1,3 +1,4 @@
+#pragma once
 #include <vector>
 #include <iostream>
 #include <math.h>
@@ -11,7 +12,7 @@
 #include <algorithm>
 
 //Note that the ARRAY vector will be cleared during execution so that memory usage doesn't get too out of hand.
-void array2balancedBtree(std::vector<unsigned char> &byte_arr, std::vector<Entry_v2> &array, unsigned short BtreeNodeSize, bool lastNgram) {
+inline void array2balancedBtree(std::vector<unsigned char> &byte_arr, std::vector<Entry_v2> &array, unsigned short BtreeNodeSize, bool lastNgram) {
     /*Idea: First we have the current BTree constructed as an array.
       We convert that array to a BTree using the following algorithm:
       1) Divide the length of the array by the BTreeNodeSize and divide the array in n even parts (approximately)
@@ -122,7 +123,7 @@ void array2balancedBtree(std::vector<unsigned char> &byte_arr, std::vector<Entry
 }
 
 /*Given a subsection of the array representation of the btree, calculate the size of the top node*/
-unsigned int futureSizeCalculator(unsigned int size, unsigned short BtreeNodeSize, int payload_size) {
+inline unsigned int futureSizeCalculator(unsigned int size, unsigned short BtreeNodeSize, int payload_size) {
     unsigned int node_size;
     if (size <= BtreeNodeSize) {
         node_size = (4 + payload_size)*size;
@@ -133,7 +134,7 @@ unsigned int futureSizeCalculator(unsigned int size, unsigned short BtreeNodeSiz
     return node_size;
 }
 
-void entry_v2_to_node(std::vector<unsigned char> &byte_arr, std::vector<Entry_v2> &entries, std::vector<unsigned int> offsets, unsigned int payload_size) {
+inline void entry_v2_to_node(std::vector<unsigned char> &byte_arr, std::vector<Entry_v2> &entries, std::vector<unsigned int> offsets, unsigned int payload_size) {
     /* Case 1: inner: |vocabIDs|OFFSETS|PAYLOADS|
        Case 2: leaf   |vocabIDs|Payloads|
        payload size: 4 for last level ngrams, 12 for every other case
@@ -189,7 +190,7 @@ void entry_v2_to_node(std::vector<unsigned char> &byte_arr, std::vector<Entry_v2
 
 //Idea: if we have BtreeNodeSize, we want BtreeNodeSize+1 almost equal children.
 //To do that we get remainder elements and we split them into even groups.
-std::vector<unsigned int> createEvenSplits(unsigned int array_size, unsigned short BtreeNodeSize) {
+inline std::vector<unsigned int> createEvenSplits(unsigned int array_size, unsigned short BtreeNodeSize) {
     std::vector<unsigned int> equal_parts;
     equal_parts.reserve(BtreeNodeSize + 1);
 
@@ -222,7 +223,7 @@ std::vector<unsigned int> createEvenSplits(unsigned int array_size, unsigned sho
 
 }
 
-Entry_with_offset searchBtree(std::vector<unsigned char> &byte_arr, size_t BtreeStartPosition, unsigned short BtreeNodeSize, unsigned int vocabID, bool lastNgram) {
+inline Entry_with_offset searchBtree(std::vector<unsigned char> &byte_arr, size_t BtreeStartPosition, unsigned short BtreeNodeSize, unsigned int vocabID, bool lastNgram) {
     unsigned short payload_size;
     if (lastNgram) {
         payload_size = 4;
@@ -252,7 +253,7 @@ Entry_with_offset searchBtree(std::vector<unsigned char> &byte_arr, size_t Btree
     }
 }
 
-Entry_with_offset searchNode(std::vector<unsigned char> &byte_arr, size_t StartPosition, unsigned int node_size, unsigned int vocabID,
+inline Entry_with_offset searchNode(std::vector<unsigned char> &byte_arr, size_t StartPosition, unsigned int node_size, unsigned int vocabID,
  unsigned short payload_size, unsigned short BtreeNodeSize) {
     Entry_with_offset result = {0, 0, 0.0, 0.0, 0, 0, false, 0, 0};
 
@@ -339,7 +340,7 @@ Entry_with_offset searchNode(std::vector<unsigned char> &byte_arr, size_t StartP
 }
 
 //Finds either the matching entry or the continuation position
-std::pair<unsigned int, bool> linearSearch(unsigned int * arr_to_search, unsigned int size, unsigned int vocabID) {
+inline std::pair<unsigned int, bool> linearSearch(unsigned int * arr_to_search, unsigned int size, unsigned int vocabID) {
     std::pair<unsigned int, bool> ret;
     bool set = false; //Checks if we set anything
     for (unsigned int i = 0; i < size; i++) {
@@ -365,7 +366,7 @@ std::pair<unsigned int, bool> linearSearch(unsigned int * arr_to_search, unsigne
     return ret;
 }
 
-std::pair<bool, std::string> test_btree_v2(unsigned int num_elements, unsigned short BtreeNodeSize, bool lastNgram) {
+inline std::pair<bool, std::string> test_btree_v2(unsigned int num_elements, unsigned short BtreeNodeSize, bool lastNgram) {
     std::stringstream error;
     bool passes = true;
 

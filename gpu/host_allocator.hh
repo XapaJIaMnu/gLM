@@ -1,3 +1,4 @@
+#pragma once
 #include <cuda.h>
 #include <driver_types.h> /*cudaError_t*/
 #include <cuda_runtime_api.h> /*cudaGetErrorString*/

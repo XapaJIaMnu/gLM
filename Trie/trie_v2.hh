@@ -1,3 +1,4 @@
+#pragma once
 #include "../Btree/btree_v2_impl.hh"
 #include "../Parser/tokenizer.hh"
 #include "../LM/lm.hh"
