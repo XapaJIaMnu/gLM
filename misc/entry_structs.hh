@@ -22,105 +22,105 @@ struct Entry_offset {
     float backoff;
 };
 
-bool operator> (const Entry &left, const Entry &right) {
+inline bool operator> (const Entry &left, const Entry &right) {
     return (left.value > right.value);
 }
 
-bool operator< (const Entry &left, const Entry &right) {
+inline bool operator< (const Entry &left, const Entry &right) {
     return (left.value < right.value);
 }
 
-bool operator== (const Entry &left, const Entry &right) {
+inline bool operator== (const Entry &left, const Entry &right) {
     return (left.value == right.value);
 }
 
-bool operator!= (const Entry &left, const Entry &right) {
+inline bool operator!= (const Entry &left, const Entry &right) {
     return (left.value != right.value);
 }
 
 //With a number
-bool operator> (const unsigned int &left, const Entry &right) {
+inline bool operator> (const unsigned int &left, const Entry &right) {
     return (left > right.value);
 }
 
-bool operator< (const unsigned int &left, const Entry &right) {
+inline bool operator< (const unsigned int &left, const Entry &right) {
     return (left < right.value);
 }
 
-bool operator== (const unsigned int &left, const Entry &right) {
+inline bool operator== (const unsigned int &left, const Entry &right) {
     return (left == right.value);
 }
 
-bool operator!= (const unsigned int &left, const Entry &right) {
+inline bool operator!= (const unsigned int &left, const Entry &right) {
     return (left != right.value);
 }
 
 //The other way, for convenience
 
-bool operator> (const Entry &left, const unsigned int &right) {
+inline bool operator> (const Entry &left, const unsigned int &right) {
     return (left.value > right);
 }
 
-bool operator< (const Entry &left, const unsigned int &right) {
+inline bool operator< (const Entry &left, const unsigned int &right) {
     return (left.value < right);
 }
 
-bool operator== (const Entry &left, const unsigned int &right) {
+inline bool operator== (const Entry &left, const unsigned int &right) {
     return (left.value == right);
 }
 
-bool operator!= (const Entry &left, const unsigned int &right) {
+inline bool operator!= (const Entry &left, const unsigned int &right) {
     return (left.value != right);
 }
 
-bool operator> (const Entry_v2 &left, const Entry_v2 &right) {
+inline bool operator> (const Entry_v2 &left, const Entry_v2 &right) {
     return (left.vocabID > right.vocabID);
 }
 
-bool operator< (const Entry_v2 &left, const Entry_v2 &right) {
+inline bool operator< (const Entry_v2 &left, const Entry_v2 &right) {
     return (left.vocabID < right.vocabID);
 }
 
-bool operator== (const Entry_v2 &left, const Entry_v2 &right) {
+inline bool operator== (const Entry_v2 &left, const Entry_v2 &right) {
     return (left.vocabID == right.vocabID);
 }
 
-bool operator!= (const Entry_v2 &left, const Entry_v2 &right) {
+inline bool operator!= (const Entry_v2 &left, const Entry_v2 &right) {
     return (left.vocabID != right.vocabID);
 }
 
 //With a number
-bool operator> (const unsigned int &left, const Entry_v2 &right) {
+inline bool operator> (const unsigned int &left, const Entry_v2 &right) {
     return (left > right.vocabID);
 }
 
-bool operator< (const unsigned int &left, const Entry_v2 &right) {
+inline bool operator< (const unsigned int &left, const Entry_v2 &right) {
     return (left < right.vocabID);
 }
 
-bool operator== (const unsigned int &left, const Entry_v2 &right) {
+inline bool operator== (const unsigned int &left, const Entry_v2 &right) {
     return (left == right.vocabID);
 }
 
-bool operator!= (const unsigned int &left, const Entry_v2 &right) {
+inline bool operator!= (const unsigned int &left, const Entry_v2 &right) {
     return (left != right.vocabID);
 }
 
 //The other way, for convenience
 
-bool operator> (const Entry_v2 &left, const unsigned int &right) {
+inline bool operator> (const Entry_v2 &left, const unsigned int &right) {
     return (left.vocabID > right);
 }
 
-bool operator< (const Entry_v2 &left, const unsigned int &right) {
+inline bool operator< (const Entry_v2 &left, const unsigned int &right) {
     return (left.vocabID < right);
 }
 
-bool operator== (const Entry_v2 &left, const unsigned int &right) {
+inline bool operator== (const Entry_v2 &left, const unsigned int &right) {
     return (left.vocabID == right);
 }
 
-bool operator!= (const Entry_v2 &left, const unsigned int &right) {
+inline bool operator!= (const Entry_v2 &left, const unsigned int &right) {
     return (left.vocabID != right);
 }
 
