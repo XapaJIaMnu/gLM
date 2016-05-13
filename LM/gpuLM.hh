@@ -16,7 +16,10 @@ class gpuLM {
 
     public:
 		template<class StringType>
-		gpuLM(StringType path, size_t max_num_queries) : lm(path) {
+		gpuLM(StringType path, size_t max_num_queries, int gpu_device_id = 0) : lm(path) {
+            //Set GPU device
+            setGPUDevice(gpu_device_id);
+
 			//Create GPU objects here
 			//@TODO remove CPU LM after copy, we don't care about it anymore.
 			//@TODO in fact we need to redo the whole LM so it doesn't hog so much memory.
