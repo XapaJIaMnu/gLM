@@ -2,6 +2,8 @@
 
 #include "../gpu/gpu_LM_utils_v2.hh"
 #include "lm_impl.hh"
+#include <thread>
+#include <atomic>
 
 class gpuLM {
     private:
@@ -48,4 +50,20 @@ class gpuLM {
             freeGPUMemory(query_output);
             freeGPUMemory(query_input);
         }
+};
+
+class QueryMemory {
+    private:
+        unsigned int stream = 0; //To be set using atomic variable that is incremented
+    public:
+        float * results;
+        unsigned int * ngrams_for_query;
+
+        QueryMemory(std::atomic<unsigned int>&, size_t, unsigned short);
+        QueryMemory(size_t, unsigned short);
+        unsigned int getThreadID() {
+            return stream;
+        }
+        ~QueryMemory();
+
 };

@@ -50,11 +50,11 @@ void freeGPUMemory(unsigned int * gpu_ptr) {
     CHECK_CALL(cudaFree(gpu_ptr));
 }
 
-void pinnedMemoryAllocator(unsigned int * pinned_mem, size_t num_elements) {
-    CHECK_CALL(cudaHostAlloc(&pinned_mem, num_elements*sizeof(unsigned int), cudaHostAllocDefault));
+void pinnedMemoryAllocator(unsigned int ** pinned_mem, size_t num_elements) {
+    CHECK_CALL(cudaHostAlloc((void **)pinned_mem, num_elements*sizeof(unsigned int), cudaHostAllocDefault));
 }
-void pinnedMemoryAllocator(float * pinned_mem, size_t num_elements) {
-    CHECK_CALL(cudaHostAlloc(&pinned_mem, num_elements*sizeof(float), cudaHostAllocDefault));
+void pinnedMemoryAllocator(float ** pinned_mem, size_t num_elements) {
+    CHECK_CALL(cudaHostAlloc((void **)pinned_mem, num_elements*sizeof(float), cudaHostAllocDefault));
 }
 
 void pinnedMemoryDeallocator(void * pinned_mem) {
