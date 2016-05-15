@@ -41,7 +41,7 @@ class gpuLM {
         std::unordered_map<unsigned int, std::string>& getDecodeMap() {
             return lm.decode_map;
         }
-        void query(float * result, unsigned int * queries, size_t queries_length);
+        void query(float * result, unsigned int * queries, size_t num_queries);
         ~gpuLM() {
             freeGPUMemory(btree_trie_gpu);
             freeGPUMemory(first_lvl_gpu);
