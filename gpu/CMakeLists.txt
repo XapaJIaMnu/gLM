@@ -11,6 +11,11 @@ if(CUDA_VERSION_MAJOR VERSION_LESS 8)
     set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -std=c++11; -Xcompiler -D__CORRECT_ISO_CPP11_MATH_H_PROTO")
 endif()
 
+if(CUDA_VERSION VERSION_LESS 7.5)
+    SET(CUDA_PROPAGATE_HOST_FLAGS OFF)
+    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -D_FORCE_INLINES")
+endif()
+
 cuda_add_library(memory_management memory_management.cu)
 cuda_add_library(gpu_search gpu_search.cu)
 cuda_add_library(gpu_search_v2 gpu_search_v2.cu)
