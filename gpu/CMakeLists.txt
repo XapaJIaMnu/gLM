@@ -7,7 +7,7 @@ else()
 endif()
 
 #Workaround for gcc 6.0+ and cuda < 8
-if((NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.0) AND (CUDA_VERSION_MAJOR VERSION_LESS 8))
+if(CUDA_VERSION_MAJOR VERSION_LESS 8)
     set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -std=c++11; -Xcompiler -D__CORRECT_ISO_CPP11_MATH_H_PROTO")
 endif()
 
