@@ -19,7 +19,19 @@ void serializeDatastructure(MapType& map, const StringType path){
   os.close();
 }
 
-/*@TODO make this work with templates
+//*@TODO make this work with templates
+void pairInsert(boost::tokenizer<boost::char_separator<char> >::iterator& it, std::pair<unsigned int, std::string>& map_pair) {
+    map_pair.first = std::stoull(it->c_str());
+    it++;
+    map_pair.second = *it;
+}
+
+void pairInsert(boost::tokenizer<boost::char_separator<char> >::iterator& it, std::pair<std::string, unsigned int>& map_pair) {
+    map_pair.first = *it;
+    it++;
+    map_pair.second = std::stoull(it->c_str());
+}
+
 template<class StringType, class MapType>
 void readDatastructure(MapType& map, const StringType path) {
     std::ifstream is(path);
@@ -38,71 +50,7 @@ void readDatastructure(MapType& map, const StringType path) {
         boost::char_separator<char> sep("\t");
         boost::tokenizer<boost::char_separator<char> > tokens(line, sep);
         boost::tokenizer<boost::char_separator<char> >::iterator it = tokens.begin();
-        if (std::is_same<typename MapType::key_type, std::string>::value) {
-            map_pair.first = *it;
-            it++;
-            map_pair.second = std::stoull(it->c_str());
-        } else {
-            map_pair.first = std::stoull(it->c_str());
-            it++;
-            map_pair.second = *it;
-        }
-        map.insert(map_pair);
-    }
-
-  //Close the stream after we are done.
-  is.close();
-}
-*/
-template<class StringType>
-void readDatastructure(std::unordered_map<std::string, unsigned int>& map, const StringType path) {
-    std::ifstream is(path);
-
-    if (is.fail() ){
-        std::cerr << "Failed to open file " << path << std::endl;
-        std::exit(EXIT_FAILURE);
-    }
-    
-    std::pair<std::string, unsigned int> map_pair;
-    std::string line;
-    getline(is, line);
-    unsigned int mapsize = std::stoull(line.c_str());
-    map.reserve(mapsize);
-    while (getline(is, line)) {
-        boost::char_separator<char> sep("\t");
-        boost::tokenizer<boost::char_separator<char> > tokens(line, sep);
-        boost::tokenizer<boost::char_separator<char> >::iterator it = tokens.begin();
-        map_pair.first = *it;
-        it++;
-        map_pair.second = std::stoull(it->c_str());;
-        map.insert(map_pair);
-    }
-
-  //Close the stream after we are done.
-  is.close();
-}
-
-template<class StringType>
-void readDatastructure(std::unordered_map<unsigned int, std::string>& map, const StringType path) {
-    std::ifstream is(path);
-
-    if (is.fail() ){
-        std::cerr << "Failed to open file " << path << std::endl;
-        std::exit(EXIT_FAILURE);
-    }
-    
-    std::pair<unsigned int, std::string> map_pair;
-    std::string line;
-    getline(is, line);
-    unsigned int mapsize = std::stoull(line.c_str());
-    map.reserve(mapsize);
-    while (getline(is, line)) {
-        boost::char_separator<char> sep("\t");
-        boost::tokenizer<boost::char_separator<char> > tokens(line, sep);
-        boost::tokenizer<boost::char_separator<char> >::iterator it = tokens.begin();
-        map_pair.first = std::stoull(it->c_str());
-        it++;
-        map_pair.second = *it;
+        pairInsert(it, map_pair);
         map.insert(map_pair);
     }
 
