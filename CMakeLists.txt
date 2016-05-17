@@ -17,10 +17,15 @@ else()
 endif()
 
 if(${DEBUGBUILD} EQUAL 1)
-    SET (CMAKE_CXX_FLAGS                "-g -Wall -std=c++11")
+    SET (CMAKE_CXX_FLAGS                "-g -Wall")
     SET (CMAKE_CXX_FLAGS_DEBUG          "-g")
 else()
-    SET (CMAKE_CXX_FLAGS                "-O3 -Wall -std=c++11 -DNDEBUG")
+    SET (CMAKE_CXX_FLAGS                "-O3 -Wall -DNDEBUG")
+endif()
+
+#GCC 6.0+ defaults to c++14 so no need to specify c++11 manually
+if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.0)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 endif()
 
 #Add include directories
