@@ -28,7 +28,7 @@ cd path_to_glm/release_build/bin
 This will calculate the perplexity of a text file. If *gpuDeviceID* is set, it will tell the gpu portion of the code to be executed on a particular GPU. You can check the available gpus on a system using the `nvidia_smi` command. 0 is a safe default to have if you want to set it. If *add_begin_end_markers* is set to 0, the begin of sentence and end of sentence tokens (\<s\> and \</s\>) will not surround every sentence.
 
 ## Preliminary results
-So... Everything started running correctly. A (preliminary) benchmark against KenLM (Titan X vs core i7 4720HQ)
+So... Everything started running correctly. A (preliminary) benchmark against single threaded probing KenLM (Titan X vs core i7 4720HQ)
 
 | LM  | ngram queries per second | model info          |
 |-----|:------------------------:| -------------------:|
@@ -36,7 +36,19 @@ So... Everything started running correctly. A (preliminary) benchmark against Ke
 |gLM  | 65 459 102               |3.3G, 88720517 ngrams|
 
 
-Please bear in mind that this is not a completely fair benchmark as KenLM's benchmark is single threaded and the queries are being batched, which is usually not the case. However in batch setting gLM should outperform kenLM.
+Multithreaded benchmark, same GPU against 2x Intel(R) Xeon(R) CPU E5-2680 0 @ 2.70GHz
+
+| LM  | ngram queries per second | model info          |
+|-----|:------------------------:| -------------------:|
+|KenLM 1 Thread| 8 310 761               |3.3G, 88720517 ngrams|
+|KenLM 2 Thread| 15 823 376               |3.3G, 88720517 ngrams|
+|KenLM 4 Thread| 27 201 337               |3.3G, 88720517 ngrams|
+|KenLM 8 Thread| 43 336 444               |3.3G, 88720517 ngrams|
+|KenLM 16 Thread| 49 218 076               |3.3G, 88720517 ngrams|
+|KenLM 32 Thread| 119 539 677               |3.3G, 88720517 ngrams|
+|gLM  | 65 459 102               |3.3G, 88720517 ngrams|
+
+Scheduling issue likely causes the low performance in 16 thread case. gLM achieves 2 times better performance relative to the cost of the hardware. ($1000 for the GPU vs $3500 for the CPUs)
 
 ## Changelog
 * Version 0.1
