@@ -22,9 +22,12 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
        keys_shared[i] = keys[(blockIdx.x*max_ngram) + i]; //Shared memory read here for up NUM_NGRAM keys 
     }
     if (i == 0) {
-        //Initialize shared memory for search
+        //Initialize shared memory for search. We write the entries (keys) from position 1 to n and put
+        //0 at position 0 of the actual array. This allows us to skip a case when doing an nary search.
+        //Potentially we could set the entries_actual[num_entries +1] element to UINT_MAX and then by
+        //using an extra thread skip another divergence case (which will be moved to the memory copy part)
+        //Not sure if it's worth it cause it requires a rewrite of the btree part
         entries_actual[0] = 0;
-        //entries_actual[entries_per_node + 1] = UINT_MAX;
     }
     __syncthreads();
 
@@ -135,15 +138,8 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
             __syncthreads();
 
             //NOW search
-            /*if (i == 0) {
-                if (key <= entries_actual[i + 1]) {
-                    found_idx = i;
-                    if (key == entries_actual[i + 1]) {
-                        *exact_match = true;
-                    }
-                }
-            } else */if (i < num_entries) {
-                if (key > entries_actual[i -1 + 1] && key <= entries_actual[i + 1]){
+            if (i < num_entries) {
+                if (key > entries_actual[i] && key <= entries_actual[i + 1]){
                     found_idx = i;
                     if (key == entries_actual[i + 1]) {
                         *exact_match = true;
@@ -151,7 +147,7 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
                 }
             } else if (i == num_entries) {
                 //Case where our key is greater than the last available entry. We need to do a prefix sum of i+1 elements.
-                if (key > entries_actual[i -1 + 1]) {
+                if (key > entries_actual[i]) {
                     found_idx = i;
                 }
             }
@@ -258,15 +254,8 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
             __syncthreads();
 
             //NOW search
-            /*if (i == 0) {
-                if (key <= entries_actual[i + 1]) {
-                    found_idx = i;
-                    if (key == entries_actual[i + 1]) {
-                        *exact_match = true;
-                    }
-                }
-            } else */if (i < num_entries) {
-                if (key > entries_actual[i -1 + 1] && key <= entries_actual[i + 1]){
+            if (i < num_entries) {
+                if (key > entries_actual[i] && key <= entries_actual[i + 1]){
                     found_idx = i;
                     if (key == entries_actual[i + 1]) {
                         *exact_match = true;
@@ -274,7 +263,7 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
                 }
             } else if (i == num_entries) {
                 //Case where our key is greater than the last available entry. We need to do a prefix sum of i+1 elements.
-                if (key > entries_actual[i -1 + 1]) {
+                if (key > entries_actual[i]) {
                     found_idx = i;
                 }
             }
