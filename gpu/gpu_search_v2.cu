@@ -1,7 +1,6 @@
 #include "gpu_search.hh"
 #include "gpu_common.h"
 #include <cuda_runtime.h>
-#include <climits>
 
 #define big_entry 16
 #define small_entry 8
