@@ -316,7 +316,14 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
 inline void kernelTemplateWrapper(unsigned char * btree_trie_mem, unsigned int * first_lvl, unsigned int * keys,
  unsigned int num_ngram_queries, float * results, unsigned int entries_per_node, unsigned int max_num_children,
   unsigned int max_ngram, cudaStream_t& stream, cudaEvent_t &start, cudaEvent_t &stop){
-    if (max_ngram == 5) {
+    if (max_ngram == 6) {
+        if (entries_per_node == 31) {
+            cudaEventRecord(start);
+            gpuSearchBtree<32, 31, 6><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results);
+            cudaEventRecord(stop);
+            cudaEventSynchronize(stop);
+        }
+    } else if (max_ngram == 5) {
         if (entries_per_node == 3) {
             cudaEventRecord(start);
             gpuSearchBtree<4, 3, 5><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results);

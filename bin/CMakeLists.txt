@@ -6,6 +6,7 @@ add_executable(batch_query batch_query.cpp )
 add_executable(batch_query_v2 batch_query_v2.cpp )
 add_executable(interactive_query interactive_query.cpp )
 add_executable(interactive_query_v2 interactive_query_v2.cpp )
+add_executable(ngrams4nemantus ngrams4nemantus.cpp )
 
 target_link_libraries(binarize
                       ${Boost_FILESYSTEM_LIBRARY}
@@ -39,6 +40,13 @@ target_link_libraries(interactive_query
                      )
                      
 target_link_libraries(interactive_query_v2
+                      ${Boost_FILESYSTEM_LIBRARY}
+                      ${Boost_SYSTEM_LIBRARY}
+                      memory_management
+                      gpu_search_v2
+                     )
+                     
+target_link_libraries(ngrams4nemantus
                       ${Boost_FILESYSTEM_LIBRARY}
                       ${Boost_SYSTEM_LIBRARY}
                       memory_management
