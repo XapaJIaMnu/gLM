@@ -4,6 +4,7 @@ project (gLM C CXX)
 set(DEBUGBUILD 0)
 set(BAD_HOST_FLAGS 0)
 set(GPU_COMPUTE_VER 52)
+set(PYTHON_VER_FLAG 2.7)
 
 #Fix GPU compilation on bad ubuntu systems
 if (DEFINED BAD_HOST)
@@ -33,6 +34,12 @@ else()
         message("Building a release build with -O3.")
 endif()
 
+#Set python version to compile against
+if (DEFINED PYTHON_VER)
+    set(PYTHON_VER_FLAG ${PYTHON_VER})
+endif()
+message("Building against python version: ${PYTHON_VER_FLAG}")
+
 if(${DEBUGBUILD} EQUAL 1)
     SET (CMAKE_CXX_FLAGS                "-g -Wall")
     SET (CMAKE_CXX_FLAGS_DEBUG          "-g")
@@ -58,6 +65,7 @@ add_subdirectory (misc_testing)
 add_subdirectory (bin)
 add_subdirectory (gpu)
 add_subdirectory (LM)
+add_subdirectory (lib)
 #add_subdirectory (Btree)
 #add_subdirectory (Parser)
 enable_testing ()

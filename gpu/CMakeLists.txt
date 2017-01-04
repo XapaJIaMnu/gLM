@@ -23,3 +23,7 @@ endif()
 cuda_add_library(memory_management memory_management.cu)
 cuda_add_library(gpu_search gpu_search.cu)
 cuda_add_library(gpu_search_v2 gpu_search_v2.cu)
+
+cuda_add_library(memory_management_FPIC SHARED memory_management.cu)
+cuda_add_library(gpu_search_FPIC SHARED gpu_search.cu)
+cuda_add_library(gpu_search_v2_FPIC SHARED gpu_search_v2.cu)
