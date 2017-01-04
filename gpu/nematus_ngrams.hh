@@ -1,7 +1,8 @@
 #include "gpu_LM_utils_v2.hh"
 #include "lm_impl.hh"
 
-void doGPUWork(std::vector<unsigned int>& queries, LM& lm, unsigned char * btree_trie_gpu, unsigned int * first_lvl_gpu) {
+void doGPUWork(std::vector<unsigned int>& queries, LM& lm, unsigned char * btree_trie_gpu,
+ unsigned int * first_lvl_gpu, std::vector<float>& result_storage, size_t results_start_idx) {
     unsigned int num_keys = queries.size()/lm.metadata.max_ngram_order; //Get how many ngram queries we have to do
     unsigned int * gpuKeys = copyToGPUMemory(queries.data(), queries.size());
     float * results;
@@ -10,16 +11,18 @@ void doGPUWork(std::vector<unsigned int>& queries, LM& lm, unsigned char * btree
     //Search GPU
     searchWrapper(btree_trie_gpu, first_lvl_gpu, gpuKeys, num_keys, results, lm.metadata.btree_node_size, lm.metadata.max_ngram_order);
 
-    //Copy results to host
-    std::unique_ptr<float[]> results_cpu(new float[num_keys]);
-    copyToHostMemory(results, results_cpu.get(), num_keys);
+    //Copy results to host and store them:
+    copyToHostMemory(results, &result_storage[results_start_idx], num_keys);
+
+    //Copy them to the storage vector
 
     //Free memory
     freeGPUMemory(gpuKeys);
     freeGPUMemory(results);
 }
 
-void initModel(char * path_to_model_dir, char * path_to_ngrams_file, char * path_to_vocab_file, unsigned int maxGPUMemoryMB, int gpuDeviceID=0) {
+void initModel(char * path_to_model_dir, char * path_to_ngrams_file, char * path_to_vocab_file,
+ unsigned int maxGPUMemoryMB, std::vector<float>& all_results, int gpuDeviceID=0) {
 
     setGPUDevice(gpuDeviceID);
 
@@ -106,6 +109,8 @@ void initModel(char * path_to_model_dir, char * path_to_ngrams_file, char * path
 
     std::vector<unsigned int> all_queries;
     all_queries.reserve((queries_memory*1024*1024 +4)/4);
+    all_results.resize(orig_queries.size()*softmax_vocab_vec.size()); //Allocate all results vector
+    size_t results_start_idx = 0; //The current index of the latest results.
 
     for(auto orig_query : orig_queries) {
         for (unsigned int softmax_vocab_id : softmax_vocab_vec) {
@@ -118,15 +123,29 @@ void initModel(char * path_to_model_dir, char * path_to_ngrams_file, char * path
         }
         if (all_queries.size()*4/(1024*1024) >= queries_memory) {
             //Flush the vector, send the queries to the GPU and write them to a file.
-            doGPUWork(all_queries, lm, btree_trie_gpu, first_lvl_gpu);
+            doGPUWork(all_queries, lm, btree_trie_gpu, first_lvl_gpu, all_results, results_start_idx);
+            results_start_idx += all_queries.size()/lm.metadata.max_ngram_order; //Update the start index for the next set of results.
+
             all_queries.clear(); //
             all_queries.reserve((queries_memory*1024*1024 +4)/4);
         }
     }
+    //Do the last batch:
+    doGPUWork(all_queries, lm, btree_trie_gpu, first_lvl_gpu, all_results, results_start_idx);
 
-    //Now split it in sections and query it on the GPU
+    assert(all_results[all_results.size() - 1] != 0); //Sanity check: The last probability is not zero, meaning we did all our memory copying correctly
 
     //Free GPU memory
     freeGPUMemory(btree_trie_gpu);
     freeGPUMemory(first_lvl_gpu);
+
+}
+
+//Version without provided vector, just for testing
+std::vector<float> initModel(char * path_to_model_dir, char * path_to_ngrams_file, char * path_to_vocab_file,
+ unsigned int maxGPUMemoryMB, int gpuDeviceID=0) {
+    std::vector<float> all_results;
+    initModel(path_to_model_dir, path_to_ngrams_file, path_to_vocab_file, maxGPUMemoryMB, all_results, gpuDeviceID);
+
+    return all_results;
 }
