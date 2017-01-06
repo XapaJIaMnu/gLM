@@ -1,49 +1,71 @@
 #include "gpu_LM_utils_v2.hh"
 #include "lm_impl.hh"
 
-void doGPUWork(std::vector<unsigned int>& queries, LM& lm, unsigned char * btree_trie_gpu,
- unsigned int * first_lvl_gpu, std::vector<float>& result_storage, size_t results_start_idx) {
-    unsigned int num_keys = queries.size()/lm.metadata.max_ngram_order; //Get how many ngram queries we have to do
-    unsigned int * gpuKeys = copyToGPUMemory(queries.data(), queries.size());
-    float * results;
-    allocateGPUMem(num_keys, &results);
+class NematusLM {
+    private:
+        LM lm;
 
-    //Search GPU
-    searchWrapper(btree_trie_gpu, first_lvl_gpu, gpuKeys, num_keys, results, lm.metadata.btree_node_size, lm.metadata.max_ngram_order);
+        //GPU pointers
+        unsigned char * btree_trie_gpu;
+        unsigned int * first_lvl_gpu;
 
-    //Copy results to host and store them:
-    copyToHostMemory(results, &result_storage[results_start_idx], num_keys);
+        std::vector<float *> memory_tracker;
 
-    //Copy them to the storage vector
+        void doQueries(std::vector<unsigned int>& queries, float * result_storage, size_t results_start_idx);
 
-    //Free memory
-    freeGPUMemory(gpuKeys);
-    freeGPUMemory(results);
-}
+    public:
+        unsigned int gpuMemLimit;
+        unsigned int modelMemoryUsage;
+        unsigned int queryMemory;
+        unsigned int unktoken;
+        size_t lastTotalNumQueries = 0; //Keep track of the length of the results array in the last batch
 
-void initModel(char * path_to_model_dir, char * path_to_ngrams_file, char * path_to_vocab_file,
- unsigned int maxGPUMemoryMB, std::vector<float>& all_results, int gpuDeviceID=0) {
+        //This vector contains the softmax vocabulary in order in gLM vocab format.
+        std::vector<unsigned int> softmax_vocab_vec;
 
+        NematusLM(char *, char *, unsigned int, int);
+
+        unsigned short getMaxNumNgrams() {
+            return lm.metadata.max_ngram_order;
+        }
+
+        std::unordered_map<std::string, unsigned int>& getEncodeMap() {
+            return lm.encode_map;
+        }
+        std::unordered_map<unsigned int, std::string>& getDecodeMap() {
+            return lm.decode_map;
+        }
+
+        float * processBatch(char * path_to_ngrams_file);
+
+        void freeResultsMemory();
+
+        int getLastNumQueries();
+        
+        ~NematusLM() {
+            freeGPUMemory(btree_trie_gpu);
+            freeGPUMemory(first_lvl_gpu);
+        }
+};
+
+NematusLM::NematusLM(char * path, char * vocabFilePath, unsigned int maxGPUMemoryMB, int gpuDeviceID = 0) : lm(path) {
     setGPUDevice(gpuDeviceID);
 
     //Total GPU memory allowed to use (in MB):
-    unsigned int gpuMemLimit = maxGPUMemoryMB;
+    gpuMemLimit = maxGPUMemoryMB;
 
     //Create the models
-    LM lm(path_to_model_dir);
-    unsigned char * btree_trie_gpu = copyToGPUMemory(lm.trieByteArray.data(), lm.trieByteArray.size());
-    unsigned int * first_lvl_gpu = copyToGPUMemory(lm.first_lvl.data(), lm.first_lvl.size());
-    unsigned int modelMemoryUsage = lm.metadata.byteArraySize/(1024*1024) +  (lm.metadata.intArraySize*4/(1024*1024)); //GPU memory used by the model in MB
-    unsigned int queryMemory = gpuMemLimit - modelMemoryUsage; //How much memory do we have for the queries
+    btree_trie_gpu = copyToGPUMemory(lm.trieByteArray.data(), lm.trieByteArray.size());
+    first_lvl_gpu = copyToGPUMemory(lm.first_lvl.data(), lm.first_lvl.size());
+    modelMemoryUsage = lm.metadata.byteArraySize/(1024*1024) +  (lm.metadata.intArraySize*4/(1024*1024)); //GPU memory used by the model in MB
+    queryMemory = gpuMemLimit - modelMemoryUsage; //How much memory do we have for the queries
 
-    unsigned int unktoken = lm.encode_map.find(std::string("<unk>"))->second; //find the unk token for easy reuse
+    unktoken = lm.encode_map.find(std::string("<unk>"))->second; //find the unk token for easy reuse
 
     //Read the vocab file
     std::unordered_map<unsigned int, std::string> softmax_vocab;
-    readDatastructure(softmax_vocab, path_to_vocab_file);
+    readDatastructure(softmax_vocab, vocabFilePath);
 
-    //This vector contains the softmax vocabulary in order in gLM vocab format.
-    std::vector<unsigned int> softmax_vocab_vec;
     softmax_vocab_vec.reserve(softmax_vocab.size());
     for (unsigned int i = 0; i < softmax_vocab.size(); i++) {
         //We should be using an ordered map but I don't have a template for it. Sue me.
@@ -55,7 +77,26 @@ void initModel(char * path_to_model_dir, char * path_to_ngrams_file, char * path
             softmax_vocab_vec.push_back(unktoken);
         }
     }
+}
 
+void NematusLM::doQueries(std::vector<unsigned int>& queries, float * result_storage, size_t results_start_idx) {
+    unsigned int num_keys = queries.size()/lm.metadata.max_ngram_order; //Get how many ngram queries we have to do
+    unsigned int * gpuKeys = copyToGPUMemory(queries.data(), queries.size());
+    float * results;
+    allocateGPUMem(num_keys, &results);
+
+    //Search GPU
+    searchWrapper(btree_trie_gpu, first_lvl_gpu, gpuKeys, num_keys, results, lm.metadata.btree_node_size, lm.metadata.max_ngram_order);
+
+    //Copy results to host and store them:
+    copyToHostMemory(results, &result_storage[results_start_idx], num_keys);
+
+    //Free memory
+    freeGPUMemory(gpuKeys);
+    freeGPUMemory(results);
+}
+
+float * NematusLM::processBatch(char * path_to_ngrams_file) {
     //Read in the ngrams file and convert to gLM vocabIDs
     //We need to replace their UNK with ours, replace BoS with 0s
     std::vector<std::vector<unsigned int> > orig_queries;
@@ -109,7 +150,8 @@ void initModel(char * path_to_model_dir, char * path_to_ngrams_file, char * path
 
     std::vector<unsigned int> all_queries;
     all_queries.reserve((queries_memory*1024*1024 +4)/4);
-    all_results.resize(orig_queries.size()*softmax_vocab_vec.size()); //Allocate all results vector
+    size_t total_num_queries = orig_queries.size()*softmax_vocab_vec.size();
+    float * all_results = new float[total_num_queries]; //Allocate all results vector
     size_t results_start_idx = 0; //The current index of the latest results.
 
     for(auto orig_query : orig_queries) {
@@ -123,7 +165,7 @@ void initModel(char * path_to_model_dir, char * path_to_ngrams_file, char * path
         }
         if (all_queries.size()*4/(1024*1024) >= queries_memory) {
             //Flush the vector, send the queries to the GPU and write them to a file.
-            doGPUWork(all_queries, lm, btree_trie_gpu, first_lvl_gpu, all_results, results_start_idx);
+            doQueries(all_queries, all_results, results_start_idx);
             results_start_idx += all_queries.size()/lm.metadata.max_ngram_order; //Update the start index for the next set of results.
 
             all_queries.clear(); //
@@ -131,21 +173,30 @@ void initModel(char * path_to_model_dir, char * path_to_ngrams_file, char * path
         }
     }
     //Do the last batch:
-    doGPUWork(all_queries, lm, btree_trie_gpu, first_lvl_gpu, all_results, results_start_idx);
+    doQueries(all_queries, all_results, results_start_idx);
+    lastTotalNumQueries = total_num_queries;
 
-    assert(all_results[all_results.size() - 1] != 0); //Sanity check: The last probability is not zero, meaning we did all our memory copying correctly
+    assert(all_results[total_num_queries - 1] != 0); //Sanity check: The last probability is not zero, meaning we did all our memory copying correctly
+    std::cout << "First ten entries: " << std::endl;
+    for (int i = 0; i < 10; i++) {
+        std::cout << all_results[i] << " ";
+    }
+    std::cout << std::endl;
+    std::cout << "Last entry: " << all_results[total_num_queries -1] << std::endl;
 
-    //Free GPU memory
-    freeGPUMemory(btree_trie_gpu);
-    freeGPUMemory(first_lvl_gpu);
+    memory_tracker.push_back(all_results);
+
+    return all_results;
 
 }
 
-//Version without provided vector, just for testing
-std::vector<float> initModel(char * path_to_model_dir, char * path_to_ngrams_file, char * path_to_vocab_file,
- unsigned int maxGPUMemoryMB, int gpuDeviceID=0) {
-    std::vector<float> all_results;
-    initModel(path_to_model_dir, path_to_ngrams_file, path_to_vocab_file, maxGPUMemoryMB, all_results, gpuDeviceID);
+void NematusLM::freeResultsMemory() {
+    for (auto item : memory_tracker) {
+        delete[] item;
+    }
+    memory_tracker.clear();
+}
 
-    return all_results;
+int NematusLM::getLastNumQueries() {
+    return lastTotalNumQueries;
 }
