@@ -1,6 +1,12 @@
 #include "gpu_LM_utils_v2.hh"
 #include "lm_impl.hh"
 
+//PythonNDarray bullshite
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#include <boost/python.hpp>
+#include <numpy/ndarrayobject.h>
+using namespace boost::python;
+
 class NematusLM {
     private:
         LM lm;
@@ -41,6 +47,8 @@ class NematusLM {
         void freeResultsMemory();
 
         int getLastNumQueries();
+
+        boost::python::object processBatchNDARRAY(char * path_to_ngrams_file);
         
         ~NematusLM() {
             freeGPUMemory(btree_trie_gpu);
@@ -199,4 +207,19 @@ void NematusLM::freeResultsMemory() {
 
 int NematusLM::getLastNumQueries() {
     return lastTotalNumQueries;
+}
+
+// wrap c++ array as numpy array
+//From Max http://stackoverflow.com/questions/10701514/how-to-return-numpy-array-from-boostpython
+boost::python::object NematusLM::processBatchNDARRAY(char * path_to_ngrams_file) {
+    float * result = processBatch(path_to_ngrams_file);
+
+    npy_intp shape[1] = { lastTotalNumQueries }; // array size
+    //PyObject* obj = PyArray_SimpleNewFromData(1, shape, NPY_FLOAT, result);
+    PyObject* obj = PyArray_New(&PyArray_Type, 1, shape, NPY_FLOAT, // data type
+                              NULL, result, // data pointer
+                              0, NPY_ARRAY_CARRAY_RO, // NPY_ARRAY_CARRAY_RO for readonly
+                              NULL);
+    handle<> array( obj );
+    return object(array);
 }
