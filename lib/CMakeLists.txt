@@ -1,9 +1,12 @@
 #Produce python linkable library:
-find_package(Boost COMPONENTS serialization filesystem system python REQUIRED)
 set(Python_ADDITIONAL_VERSIONS ${PYTHON_VER_FLAG})
 find_package(PythonLibs)
-if (${PYTHONLIBS_FOUND})
+if (${PYTHONLIBS_FOUND} AND DEFINED PYTHON_INCLUDE_DIR)
+    find_package(Boost COMPONENTS serialization filesystem system python REQUIRED)
     add_library(ngrams_nematus SHARED python_bridge.cpp)
+    if (DEFINED PYTHON_INCLUDE_DIR)
+        target_include_directories(ngrams_nematus PUBLIC ${PYTHON_INCLUDE_DIR})
+    endif()
     target_link_libraries(ngrams_nematus 
                         ${PYTHON_LIBRARIES} 
                         ${Boost_LIBRARIES}

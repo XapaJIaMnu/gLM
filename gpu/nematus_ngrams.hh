@@ -46,7 +46,7 @@ class NematusLM {
 
         void freeResultsMemory();
 
-        int getLastNumQueries();
+        size_t getLastNumQueries();
 
         boost::python::object processBatchNDARRAY(char * path_to_ngrams_file);
         
@@ -205,7 +205,7 @@ void NematusLM::freeResultsMemory() {
     memory_tracker.clear();
 }
 
-int NematusLM::getLastNumQueries() {
+size_t NematusLM::getLastNumQueries() {
     return lastTotalNumQueries;
 }
 
@@ -214,12 +214,12 @@ int NematusLM::getLastNumQueries() {
 boost::python::object NematusLM::processBatchNDARRAY(char * path_to_ngrams_file) {
     float * result = processBatch(path_to_ngrams_file);
 
-    npy_intp shape[1] = { lastTotalNumQueries }; // array size
-    //PyObject* obj = PyArray_SimpleNewFromData(1, shape, NPY_FLOAT, result);
-    PyObject* obj = PyArray_New(&PyArray_Type, 1, shape, NPY_FLOAT, // data type
+    npy_intp shape[1] = { (long)lastTotalNumQueries }; // array size
+    PyObject* obj = PyArray_SimpleNewFromData(1, shape, NPY_FLOAT, result);
+    /*PyObject* obj = PyArray_New(&PyArray_Type, 1, shape, NPY_FLOAT, // data type
                               NULL, result, // data pointer
                               0, NPY_ARRAY_CARRAY_RO, // NPY_ARRAY_CARRAY_RO for readonly
-                              NULL);
+                              NULL);*/
     handle<> array( obj );
     return object(array);
 }
