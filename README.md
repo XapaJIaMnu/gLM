@@ -1,4 +1,4 @@
-# gLM 0.2
+# gLM 0.3
 gLM the GPU based Language Model is an ngram language model implementation that takes in an arpa file as an input, binarizes it and queries it in batch. More details about the design and implementation can be found in this [paper](http://aclweb.org/anthology/P/P16/P16-1183.pdf), published at ACL 2016.
 
 ## Build
@@ -7,10 +7,18 @@ git clone https://github.com/XapaJIaMnu/gLM.git
 cd gLM
 mkdir release_build
 cd release_build
-cmake .. -DBUILDTYPE=release #Necessary for -O3 compilation otherwise it would be slow
+cmake ..
 make -j4
 make test #Requires CUDA for GPU testing
 ```
+
+### Additional cmake build flags
+- `-DBUILDTYPE=debug` builds with -O0 and -g
+- `-DCOMPUTE_VER` set the compute version of the hardware. Default is 52
+- `-DBAD_HOST` this should help building on older Ubuntu systems such as 12.04 and 14.04. Don't use it unless you have trouble building.
+- `-DPYTHON_INCLUDE_DIR` defines the path to the python library such as `/usr/include/python2.7/pyconfig.h` or `/usr/include/python3.6m/pyconfig` and enables building the python components.
+- `-DPYTHON_VER` is set to default to 2.7 If you want to build the python components with a different version, set it to your desired version. It would have no effect unless `-DPYTHON_INCLUDE_DIR` is set.
+
 
 ## Binarize arpa files
 ```bash
@@ -57,3 +65,5 @@ Scheduling issue likely causes the low performance in 16 thread case. gLM achiev
   * Completely rewrote the BTree construction algorithm to make it faster, deterministic and also producing better, more regular BTrees.
   * First Trie level is now an array.
   * Performance has improved ~2x compared to the previous release.
+* Version 0.3
+  * Export example python bindings of the LM. 
