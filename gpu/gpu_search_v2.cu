@@ -52,254 +52,262 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
     unsigned int current_ngram = 0;
     unsigned int key = keys_shared[current_ngram];
 
-    //Backoff logic
-    backoff_part2:
-    if (get_backoff) {
-        accumulated_score += *prob; //We add the longest match of probability we found.
-        match_length_found = current_ngram - 1; //The length of the match found. We need to backoff from toplevel to here
-        current_ngram = 1; //Set backoff in -1. If we run into this case again we need to do nothing
-        key = keys_shared[current_ngram];
-        get_backoff = true;
-    }
-    __syncthreads(); //Needed!
-    if (i < 3) {
-        payload[i] = first_lvl[(key-1)*3 + i];
-        //If this is the last non zero ngram  no need to go to the btree_trie. We already have
-        //the payload value
-    }
-    __syncthreads();
-    if (i == 0) {
-        if (get_backoff && match_length_found <= current_ngram) {
-            accumulated_score += *backoff;
-        } else if (keys_shared[current_ngram + 1] == 0) {
-            accumulated_score += *prob;
+    /* When using gLM to score ngrams for NMT frequently sentences in batches are padded with zeroes so they can be at the same length
+    * the easiest way to get corresponding behaviour is to allow gLM to submit bogus scores (e.g. 0) for them in case the first ngram
+    * in the query is zero. Hence this ugly goto which will bypass the btree code. Unfortunately we pay for this with about 0.001% drop
+    * in throughput ;/
+    */
+    if (key != 0) {
+
+        //Backoff logic
+        backoff_part2:
+        if (get_backoff) {
+            accumulated_score += *prob; //We add the longest match of probability we found.
+            match_length_found = current_ngram - 1; //The length of the match found. We need to backoff from toplevel to here
+            current_ngram = 1; //Set backoff in -1. If we run into this case again we need to do nothing
+            key = keys_shared[current_ngram];
+            get_backoff = true;
         }
-    }
-    __syncthreads();
+        __syncthreads(); //Needed!
+        if (i < 3) {
+            payload[i] = first_lvl[(key-1)*3 + i];
+            //If this is the last non zero ngram  no need to go to the btree_trie. We already have
+            //the payload value
+        }
+        __syncthreads();
+        if (i == 0) {
+            if (get_backoff && match_length_found <= current_ngram) {
+                accumulated_score += *backoff;
+            } else if (keys_shared[current_ngram + 1] == 0) {
+                accumulated_score += *prob;
+            }
+        }
+        __syncthreads();
 
-    //Set the start index
-    unsigned int current_btree_start = *next_level*4;
-    current_ngram++;
-    key = keys_shared[current_ngram];
-
-    //Some necessary variables
-    unsigned int updated_idx;
-    unsigned int size;
-
-    //Current_btree_start == 0 means that we had UNK key (vocabID 1 which wasn't found, so we should directly go to backoff
-    //@TODO we can check if key[0] == 1 when we get the score too
-    if (current_btree_start == 0 && key != 0) {
-        goto backoff_notriecont;
-    }
-
-    while ((key != 0 && current_ngram < max_ngram - 1 && current_btree_start != 0) || 
-        (get_backoff && key != 0 && current_ngram < max_ngram && current_btree_start != 0)) {
+        //Set the start index
+        unsigned int current_btree_start = *next_level*4;
         current_ngram++;
-        updated_idx = current_btree_start + 4; //Update the index for the while loop
-        //@TODO consider this for shared memory as oppposed to global mem broadcast to register
-        size = *(unsigned int *)&btree_trie_mem[current_btree_start]; //The size of the current node to process.
+        key = keys_shared[current_ngram];
 
-        //Initialize shared variable
-        if (i < 2) {
-            booleans[i] = false; //Uset *exact_match and *is_last
+        //Some necessary variables
+        unsigned int updated_idx;
+        unsigned int size;
+
+        //Current_btree_start == 0 means that we had UNK key (vocabID 1 which wasn't found, so we should directly go to backoff
+        //@TODO we can check if key[0] == 1 when we get the score too
+        if (current_btree_start == 0 && key != 0) {
+            goto backoff_notriecont;
         }
-        __syncthreads();
 
-        //Traverse the current Btree
-        while (!*exact_match) {
-            //First warp divergence here. We are reading in from global memory
-            if (i == 0) {
-                //@TODO: Replace this with a mod check
-                int cur_node_entries = (size - sizeof(unsigned int) - sizeof(unsigned short))/(big_entry + sizeof(unsigned short));
-                *is_last = !(entries_per_node == cur_node_entries);
+        while ((key != 0 && current_ngram < max_ngram - 1 && current_btree_start != 0) || 
+            (get_backoff && key != 0 && current_ngram < max_ngram && current_btree_start != 0)) {
+            current_ngram++;
+            updated_idx = current_btree_start + 4; //Update the index for the while loop
+            //@TODO consider this for shared memory as oppposed to global mem broadcast to register
+            size = *(unsigned int *)&btree_trie_mem[current_btree_start]; //The size of the current node to process.
+
+            //Initialize shared variable
+            if (i < 2) {
+                booleans[i] = false; //Uset *exact_match and *is_last
             }
             __syncthreads();
 
-            int num_entries; //Set the number of entries per node depending on whether we are internal or leaf.
-            if (*is_last) {
-                //The number of entries in the bottom most nodes may be smaller than the size
-                num_entries = size/big_entry;
-                if (i < num_entries) {
-                    entries[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + i*sizeof(unsigned int)]);
-                }
-            } else {
-                num_entries = entries_per_node;
-                //Now load the entries
-                if (i < num_entries) {
-                    entries[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + i*sizeof(unsigned int)]);
-                }
-
-                //Load the unsigned int start offset together with the accumulated offsets to avoid warp divergence
-                if (i < (max_num_children/2) + 1) {
-                    offsets[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + num_entries*sizeof(unsigned int) + i*sizeof(unsigned int)]);
-                }
-            }
-            __syncthreads();
-
-            //NOW search
-            if (i < num_entries) {
-                if (key > entries_actual[i] && key <= entries_actual[i + 1]){
-                    found_idx = i;
-                    if (key == entries_actual[i + 1]) {
-                        *exact_match = true;
-                    }
-                }
-            } else if (i == num_entries) {
-                //Case where our key is greater than the last available entry. We need to do a prefix sum of i+1 elements.
-                if (key > entries_actual[i]) {
-                    found_idx = i;
-                }
-            }
-            __syncthreads();
-
-            //We found either an exact match (so we can access next level) or at least an address to next btree level
-            if (!*exact_match && !*is_last) {
-                //Calculate the address and the size of the next child
-                updated_idx += *first_child_offset*4;
-                if (found_idx == 0) {
-                   size = offests_incremental[0]*4; //0 being found_idx but a bit faster cause we hardcode it
-                } else {
-                    updated_idx += offests_incremental[found_idx - 1]*4;
-                    size = (offests_incremental[found_idx] - offests_incremental[found_idx - 1])*4;
-                }
-                __syncthreads();
-            } else if (*is_last && !*exact_match) {
-                //In this case we didn't find the key that we were looking for
-                //What we should do is get the probability of the last node that we found
-                //The last node that we found's probability should be in shared memory
-                backoff_notriecont:
-                if (get_backoff) {
-                    current_ngram = max_ngram;
-                    break; //If we didn't find a backoff, the value is zero; //We should go to end now, because any further backoffs
-                    // will be missing from the trie
-                } else {
-                    get_backoff = true;
-                    __syncthreads(); //Necessary
-                    goto backoff_part2;
-                }
-            } else {
-                //Locate the rest of the data for the entry (i.e. the payload - backoff, prob, next offset)
-                if (i < 3) {
-                    //What we are doing here is reading the correct memory location for our payload. The payload is found
-                    //After the offsets and the keys, so we skip them and then we skip to the correct payload using found_idx
-                    if (*is_last) {
-                        payload[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + num_entries*sizeof(unsigned int) //Skip the keys
-                            + found_idx*(sizeof(unsigned int) + sizeof(float) + sizeof(float)) //Skip the previous keys' payload
-                                + i*sizeof(unsigned int)]); //Get next_level/prob/backoff
-                    } else {
-                        payload[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + sizeof(unsigned int) + max_num_children*sizeof(unsigned short) //Skip the offsets and first offset
-                            + num_entries*sizeof(unsigned int) //Skip the keys
-                                + found_idx*(sizeof(unsigned int) + sizeof(float) + sizeof(float)) //Skip the previous keys' payload
-                                    + i*sizeof(unsigned int)]);  //Get next_level/prob/backoff
-                    }
-                }
-
-                key = keys_shared[current_ngram]; //@TODO this might be illegal memory access
-                __syncthreads();
-                current_btree_start = current_btree_start + *next_level*4;
-
-                if (get_backoff) {
-                    if (match_length_found < current_ngram) {
-                        accumulated_score += *backoff;
-                    }
-                } else if (key == 0) {
-                    accumulated_score += *prob;
-                }
-                break;
-            }
-        }
-    }
-    //Now fetch the last level if the key is not 0 or we backed off
-    //key = keys_shared[current_ngram]; We already set the next key
-    if (!get_backoff && key != 0) {
-        updated_idx = current_btree_start + 4; //Update the index for the while loop
-        //@TODO consider this for shared memory as oppposed to global mem broadcast to register
-        size = *(unsigned int *)&btree_trie_mem[current_btree_start]; //The size of the current node to process.
-
-        //Initialize shared variable
-        if (i < 2) {
-            booleans[i] = false;
-        }
-        __syncthreads();
-
-        //Traverse the current Btree
-        while (!*exact_match) {
-            //First warp divergence here. We are reading in from global memory
-            if (i == 0) {
-                //@TODO: Replace this with a mod check
-                int cur_node_entries = (size - sizeof(unsigned int) - sizeof(unsigned short))/(small_entry + sizeof(unsigned short));
-                *is_last = !(entries_per_node == cur_node_entries);
-            }
-            __syncthreads();
-
-            int num_entries; //Set the number of entries per node depending on whether we are internal or leaf.
-            if (*is_last) {
-                //The number of entries in the bottom most nodes may be smaller than the size
-                num_entries = size/small_entry;
-                if (i < num_entries) {
-                    entries[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + i*sizeof(unsigned int)]);
-                }
-            } else {
-                num_entries = entries_per_node;
-                //Now load the entries
-                if (i < num_entries) {
-                    entries[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + i*sizeof(unsigned int)]);
-                }
-                //Load the unsigned int start offset together with the accumulated offsets to avoid warp divergence
-                if (i < (max_num_children/2) + 1) {
-                    offsets[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + num_entries*sizeof(unsigned int) + i*sizeof(unsigned int)]);
-                }
-            }
-            __syncthreads();
-
-            //NOW search
-            if (i < num_entries) {
-                if (key > entries_actual[i] && key <= entries_actual[i + 1]){
-                    found_idx = i;
-                    if (key == entries_actual[i + 1]) {
-                        *exact_match = true;
-                    }
-                }
-            } else if (i == num_entries) {
-                //Case where our key is greater than the last available entry. We need to do a prefix sum of i+1 elements.
-                if (key > entries_actual[i]) {
-                    found_idx = i;
-                }
-            }
-            __syncthreads();
-
-            //We found either an exact match (so we can access next level) or at least an address to next btree level
-            if (!*exact_match && !*is_last) {
-                //Calculate the address and the size of the next child
-                updated_idx += *first_child_offset*4;
-                if (found_idx == 0) {
-                   size = offests_incremental[0]*4; //0 being found_idx but a bit faster cause we hardcode it
-                } else {
-                    updated_idx += offests_incremental[found_idx - 1]*4;
-                    size = (offests_incremental[found_idx] - offests_incremental[found_idx - 1])*4;
-                }
-                __syncthreads();
-            } else if (!*exact_match && is_last) {
-                current_ngram++; //This is necessary so that longest match logic is kept correct since in the while loop we
-                goto backoff_notriecont; //Increment this before actually finding the next level
-            } else {
-                // We have an exact match, so we just need to add it to the payload and be done with it
+            //Traverse the current Btree
+            while (!*exact_match) {
+                //First warp divergence here. We are reading in from global memory
                 if (i == 0) {
-                    //What we are doing here is reading the correct memory location for our payload. The payload is found
-                    //After the offsets and the keys, so we skip them and then we skip to the correct payload using found_idx
-                    if (*is_last) {
-                        accumulated_score += *(float *)(&btree_trie_mem[updated_idx + num_entries*sizeof(unsigned int) //Skip the keys
-                            + found_idx*(sizeof(float))]); //Skip the previous keys' payload
+                    //@TODO: Replace this with a mod check
+                    int cur_node_entries = (size - sizeof(unsigned int) - sizeof(unsigned short))/(big_entry + sizeof(unsigned short));
+                    *is_last = !(entries_per_node == cur_node_entries);
+                }
+                __syncthreads();
+
+                int num_entries; //Set the number of entries per node depending on whether we are internal or leaf.
+                if (*is_last) {
+                    //The number of entries in the bottom most nodes may be smaller than the size
+                    num_entries = size/big_entry;
+                    if (i < num_entries) {
+                        entries[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + i*sizeof(unsigned int)]);
+                    }
+                } else {
+                    num_entries = entries_per_node;
+                    //Now load the entries
+                    if (i < num_entries) {
+                        entries[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + i*sizeof(unsigned int)]);
+                    }
+
+                    //Load the unsigned int start offset together with the accumulated offsets to avoid warp divergence
+                    if (i < (max_num_children/2) + 1) {
+                        offsets[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + num_entries*sizeof(unsigned int) + i*sizeof(unsigned int)]);
+                    }
+                }
+                __syncthreads();
+
+                //NOW search
+                if (i < num_entries) {
+                    if (key > entries_actual[i] && key <= entries_actual[i + 1]){
+                        found_idx = i;
+                        if (key == entries_actual[i + 1]) {
+                            *exact_match = true;
+                        }
+                    }
+                } else if (i == num_entries) {
+                    //Case where our key is greater than the last available entry. We need to do a prefix sum of i+1 elements.
+                    if (key > entries_actual[i]) {
+                        found_idx = i;
+                    }
+                }
+                __syncthreads();
+
+                //We found either an exact match (so we can access next level) or at least an address to next btree level
+                if (!*exact_match && !*is_last) {
+                    //Calculate the address and the size of the next child
+                    updated_idx += *first_child_offset*4;
+                    if (found_idx == 0) {
+                       size = offests_incremental[0]*4; //0 being found_idx but a bit faster cause we hardcode it
                     } else {
-                        accumulated_score += *(float *)(&btree_trie_mem[updated_idx + sizeof(unsigned int) + max_num_children*sizeof(unsigned short) //Skip the offsets and first offset
-                            + num_entries*sizeof(unsigned int) //Skip the keys
+                        updated_idx += offests_incremental[found_idx - 1]*4;
+                        size = (offests_incremental[found_idx] - offests_incremental[found_idx - 1])*4;
+                    }
+                    __syncthreads();
+                } else if (*is_last && !*exact_match) {
+                    //In this case we didn't find the key that we were looking for
+                    //What we should do is get the probability of the last node that we found
+                    //The last node that we found's probability should be in shared memory
+                    backoff_notriecont:
+                    if (get_backoff) {
+                        current_ngram = max_ngram;
+                        break; //If we didn't find a backoff, the value is zero; //We should go to end now, because any further backoffs
+                        // will be missing from the trie
+                    } else {
+                        get_backoff = true;
+                        __syncthreads(); //Necessary
+                        goto backoff_part2;
+                    }
+                } else {
+                    //Locate the rest of the data for the entry (i.e. the payload - backoff, prob, next offset)
+                    if (i < 3) {
+                        //What we are doing here is reading the correct memory location for our payload. The payload is found
+                        //After the offsets and the keys, so we skip them and then we skip to the correct payload using found_idx
+                        if (*is_last) {
+                            payload[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + num_entries*sizeof(unsigned int) //Skip the keys
+                                + found_idx*(sizeof(unsigned int) + sizeof(float) + sizeof(float)) //Skip the previous keys' payload
+                                    + i*sizeof(unsigned int)]); //Get next_level/prob/backoff
+                        } else {
+                            payload[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + sizeof(unsigned int) + max_num_children*sizeof(unsigned short) //Skip the offsets and first offset
+                                + num_entries*sizeof(unsigned int) //Skip the keys
+                                    + found_idx*(sizeof(unsigned int) + sizeof(float) + sizeof(float)) //Skip the previous keys' payload
+                                        + i*sizeof(unsigned int)]);  //Get next_level/prob/backoff
+                        }
+                    }
+
+                    key = keys_shared[current_ngram]; //@TODO this might be illegal memory access
+                    __syncthreads();
+                    current_btree_start = current_btree_start + *next_level*4;
+
+                    if (get_backoff) {
+                        if (match_length_found < current_ngram) {
+                            accumulated_score += *backoff;
+                        }
+                    } else if (key == 0) {
+                        accumulated_score += *prob;
+                    }
+                    break;
+                }
+            }
+        }
+        //Now fetch the last level if the key is not 0 or we backed off
+        //key = keys_shared[current_ngram]; We already set the next key
+        if (!get_backoff && key != 0) {
+            updated_idx = current_btree_start + 4; //Update the index for the while loop
+            //@TODO consider this for shared memory as oppposed to global mem broadcast to register
+            size = *(unsigned int *)&btree_trie_mem[current_btree_start]; //The size of the current node to process.
+
+            //Initialize shared variable
+            if (i < 2) {
+                booleans[i] = false;
+            }
+            __syncthreads();
+
+            //Traverse the current Btree
+            while (!*exact_match) {
+                //First warp divergence here. We are reading in from global memory
+                if (i == 0) {
+                    //@TODO: Replace this with a mod check
+                    int cur_node_entries = (size - sizeof(unsigned int) - sizeof(unsigned short))/(small_entry + sizeof(unsigned short));
+                    *is_last = !(entries_per_node == cur_node_entries);
+                }
+                __syncthreads();
+
+                int num_entries; //Set the number of entries per node depending on whether we are internal or leaf.
+                if (*is_last) {
+                    //The number of entries in the bottom most nodes may be smaller than the size
+                    num_entries = size/small_entry;
+                    if (i < num_entries) {
+                        entries[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + i*sizeof(unsigned int)]);
+                    }
+                } else {
+                    num_entries = entries_per_node;
+                    //Now load the entries
+                    if (i < num_entries) {
+                        entries[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + i*sizeof(unsigned int)]);
+                    }
+                    //Load the unsigned int start offset together with the accumulated offsets to avoid warp divergence
+                    if (i < (max_num_children/2) + 1) {
+                        offsets[i] = *(unsigned int *)(&btree_trie_mem[updated_idx + num_entries*sizeof(unsigned int) + i*sizeof(unsigned int)]);
+                    }
+                }
+                __syncthreads();
+
+                //NOW search
+                if (i < num_entries) {
+                    if (key > entries_actual[i] && key <= entries_actual[i + 1]){
+                        found_idx = i;
+                        if (key == entries_actual[i + 1]) {
+                            *exact_match = true;
+                        }
+                    }
+                } else if (i == num_entries) {
+                    //Case where our key is greater than the last available entry. We need to do a prefix sum of i+1 elements.
+                    if (key > entries_actual[i]) {
+                        found_idx = i;
+                    }
+                }
+                __syncthreads();
+
+                //We found either an exact match (so we can access next level) or at least an address to next btree level
+                if (!*exact_match && !*is_last) {
+                    //Calculate the address and the size of the next child
+                    updated_idx += *first_child_offset*4;
+                    if (found_idx == 0) {
+                       size = offests_incremental[0]*4; //0 being found_idx but a bit faster cause we hardcode it
+                    } else {
+                        updated_idx += offests_incremental[found_idx - 1]*4;
+                        size = (offests_incremental[found_idx] - offests_incremental[found_idx - 1])*4;
+                    }
+                    __syncthreads();
+                } else if (!*exact_match && is_last) {
+                    current_ngram++; //This is necessary so that longest match logic is kept correct since in the while loop we
+                    goto backoff_notriecont; //Increment this before actually finding the next level
+                } else {
+                    // We have an exact match, so we just need to add it to the payload and be done with it
+                    if (i == 0) {
+                        //What we are doing here is reading the correct memory location for our payload. The payload is found
+                        //After the offsets and the keys, so we skip them and then we skip to the correct payload using found_idx
+                        if (*is_last) {
+                            accumulated_score += *(float *)(&btree_trie_mem[updated_idx + num_entries*sizeof(unsigned int) //Skip the keys
                                 + found_idx*(sizeof(float))]); //Skip the previous keys' payload
+                        } else {
+                            accumulated_score += *(float *)(&btree_trie_mem[updated_idx + sizeof(unsigned int) + max_num_children*sizeof(unsigned short) //Skip the offsets and first offset
+                                + num_entries*sizeof(unsigned int) //Skip the keys
+                                    + found_idx*(sizeof(float))]); //Skip the previous keys' payload
+                        }
                     }
                 }
             }
         }
-    }
 
+    } //key != 0
     //Write the correct result at the end
     if (i == 0) {
         results[blockIdx.x] = accumulated_score;
