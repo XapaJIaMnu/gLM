@@ -1,4 +1,4 @@
-find_package(Boost COMPONENTS serialization filesystem system REQUIRED)
+find_package(Boost COMPONENTS serialization filesystem system python REQUIRED)
 
 add_executable(binarize binarize.cpp )
 add_executable(binarize_v2 binarize_v2.cpp )

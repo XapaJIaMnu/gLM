@@ -14,14 +14,7 @@ int main(int argc, char* argv[]) {
 
     NematusLM ngramEngine = NematusLM(argv[1], argv[3], std::stoull(argv[4]), gpuDeviceID);
     float * results = ngramEngine.processBatch(argv[2]);
-
-    assert(results[ngramEngine.lastTotalNumQueries - 1] != 0); //Sanity check: The last probability is not zero, meaning we did all our memory copying correctly
-    std::cout << "First ten entries: " << std::endl;
-    for (int i = 0; i < 10; i++) {
-        std::cout << results[i] << " ";
-    }
-    std::cout << std::endl;
-    std::cout << "Last entry: " << results[ngramEngine.lastTotalNumQueries -1] << std::endl;
+    results[0] = results[0]; //Silence compiler warning.
 
     ngramEngine.freeResultsMemory();
 

@@ -124,9 +124,21 @@ float * NematusLM::processBatch(char * path_to_ngrams_file) {
 
         std::vector<unsigned int> orig_query;
         orig_query.reserve(lm.metadata.max_ngram_order);
+        bool bogusNgram = false; //Flag about how many </s> we have seen. We only care
+        bool seenEoS = false;    //About the first. if the query has 2 EoSs in a row it is
+                              //bogus and we shouldn't score it
         while(it != tokens.end() ){
             std::string vocabItem = *it;
-            if (vocabItem == "<s>") {
+            if (vocabItem == "</s>") {
+                if (seenEoS) {
+                    bogusNgram = true;
+                }
+                seenEoS = true;
+            }
+            if (bogusNgram) {
+                orig_query.push_back(0);
+                orig_query[0] = 0; // A bogus ngram is defined by leading 0 so we need to set it.
+            } else if (vocabItem == "<s>") {
                 orig_query.push_back(0);
             } else {
                 auto mapiter = lm.encode_map.find(vocabItem);
@@ -165,7 +177,11 @@ float * NematusLM::processBatch(char * path_to_ngrams_file) {
     for(auto orig_query : orig_queries) {
         for (unsigned int softmax_vocab_id : softmax_vocab_vec) {
             assert(softmax_vocab_id != 0); //Sanity check
-            all_queries.push_back(softmax_vocab_id);
+            if (orig_query[0] == 0) { //If the 0th ngram is 0, then this is a bogus query, so keep it that way.
+                all_queries.push_back(0);
+            } else {
+                all_queries.push_back(softmax_vocab_id);
+            }
             for (unsigned int i = 1; i < orig_query.size(); i++) { //The first is updated, the rest are the same
                 all_queries.push_back(orig_query[i]);
             }
@@ -184,13 +200,11 @@ float * NematusLM::processBatch(char * path_to_ngrams_file) {
     doQueries(all_queries, all_results, results_start_idx);
     lastTotalNumQueries = total_num_queries;
 
-    assert(all_results[total_num_queries - 1] != 0); //Sanity check: The last probability is not zero, meaning we did all our memory copying correctly
     std::cout << "First ten entries: " << std::endl;
     for (int i = 0; i < 10; i++) {
         std::cout << all_results[i] << " ";
     }
     std::cout << std::endl;
-    std::cout << "Last entry: " << all_results[total_num_queries -1] << std::endl;
 
     memory_tracker.push_back(all_results);
 
