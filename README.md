@@ -14,7 +14,7 @@ make test #Requires CUDA for GPU testing
 
 ### Additional cmake build flags
 - `-DBUILDTYPE=debug` builds with -O0 and -g
-- `-DCOMPUTE_VER` set the compute version of the hardware. Default is 52. **IT WILL NOT PRODUCE CORRECT SCORES IF IT IS COMPILED WITH A WRONG COMPUTE VERSION!!! CHECK YOUR GPU'S COMPUTE VERSION [HERE](https://en.wikipedia.org/wiki/CUDA)** 
+- `-DCOMPUTE_VER` set the compute version of the hardware. Default is 52. **IT WILL NOT PRODUCE CORRECT SCORES IF IT IS COMPILED WITH A WRONG COMPUTE VERSION!!! CHECK YOUR GPU'S COMPUTE VERSION [HERE](https://en.wikipedia.org/wiki/CUDA)**. If `make test` doesn't fail any of the GPU tests, it means your compute version is correct.
 - `-DBAD_HOST` this should help building on older Ubuntu systems such as 12.04 and 14.04. Don't use it unless you have trouble building.
 - `-DPYTHON_INCLUDE_DIR` defines the path to the python library such as `/usr/include/python2.7/pyconfig.h` or `/usr/include/python3.6m/pyconfig` and enables building the python components.
 - `-DPYTHON_VER` is set to default to 2.7 If you want to build the python components with a different version, set it to your desired version. It would have no effect unless `-DPYTHON_INCLUDE_DIR` is set.
