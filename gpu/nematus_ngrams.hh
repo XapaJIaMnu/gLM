@@ -48,11 +48,12 @@ class NematusLM {
 
         size_t getLastNumQueries();
 
-        boost::python::object processBatchNDARRAY(char * path_to_ngrams_file);
+        boost::python::object processBatchNDARRAY(char * path_to_ngrams_file, long softmax_size, long sentence_length, long batch_size);
         
         ~NematusLM() {
             freeGPUMemory(btree_trie_gpu);
             freeGPUMemory(first_lvl_gpu);
+            freeResultsMemory();
         }
 };
 
@@ -225,11 +226,15 @@ size_t NematusLM::getLastNumQueries() {
 
 // wrap c++ array as numpy array
 //From Max http://stackoverflow.com/questions/10701514/how-to-return-numpy-array-from-boostpython
-boost::python::object NematusLM::processBatchNDARRAY(char * path_to_ngrams_file) {
+boost::python::object NematusLM::processBatchNDARRAY(char * path_to_ngrams_file, long softmax_size, long sentence_length, long batch_size) {
     float * result = processBatch(path_to_ngrams_file);
 
-    npy_intp shape[1] = { (long)lastTotalNumQueries }; // array size
-    PyObject* obj = PyArray_SimpleNewFromData(1, shape, NPY_FLOAT, result);
+    if ((long)lastTotalNumQueries != softmax_size*sentence_length*batch_size) {
+        std::cerr << "ARRAY SIZE MISMATCH! SOMETHING IS VERY WRONG!" << std::endl;
+    }
+
+    npy_intp shape[2] = {sentence_length*batch_size, softmax_size }; // array size
+    PyObject* obj = PyArray_SimpleNewFromData(2, shape, NPY_FLOAT, result);
     /*PyObject* obj = PyArray_New(&PyArray_Type, 1, shape, NPY_FLOAT, // data type
                               NULL, result, // data pointer
                               0, NPY_ARRAY_CARRAY_RO, // NPY_ARRAY_CARRAY_RO for readonly
