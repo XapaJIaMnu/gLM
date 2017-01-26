@@ -79,6 +79,9 @@ NematusLM::NematusLM(char * path, char * vocabFilePath, unsigned int maxGPUMemor
     for (unsigned int i = 0; i < softmax_vocab.size(); i++) {
         //We should be using an ordered map but I don't have a template for it. Sue me.
         std::string softmax_order_string = softmax_vocab.find(i)->second;
+        if (softmax_order_string == "<s>") {
+            continue; //Nematus doesn't predict begin of sentence, so we remove it from vocab.
+        }
         auto mapiter = lm.encode_map.find(softmax_order_string);
         if (mapiter != lm.encode_map.end()) {
             softmax_vocab_vec.push_back(mapiter->second);
@@ -117,7 +120,6 @@ float * NematusLM::processBatch(char * path_to_ngrams_file) {
     }
 
     std::string line;
-    getline(is, line);
     while (getline(is, line)) {
         boost::char_separator<char> sep(" ");
         boost::tokenizer<boost::char_separator<char> > tokens(line, sep);
@@ -128,6 +130,7 @@ float * NematusLM::processBatch(char * path_to_ngrams_file) {
         bool bogusNgram = false; //Flag about how many </s> we have seen. We only care
         bool seenEoS = false;    //About the first. if the query has 2 EoSs in a row it is
                               //bogus and we shouldn't score it
+        bool seenBoS = false;  //We only want one BoS symbol in our queries.
         while(it != tokens.end() ){
             std::string vocabItem = *it;
             if (vocabItem == "</s>") {
@@ -136,12 +139,18 @@ float * NematusLM::processBatch(char * path_to_ngrams_file) {
                 }
                 seenEoS = true;
             }
+
             if (bogusNgram) {
                 orig_query.push_back(0);
                 orig_query[0] = 0; // A bogus ngram is defined by leading 0 so we need to set it.
-            } else if (vocabItem == "<s>") {
-                orig_query.push_back(0);
+            } else if (seenBoS) {
+                orig_query.push_back(0); //Only one BoS allowed.
             } else {
+
+                if (vocabItem == "<s>") {
+                    seenBoS = true;
+                }
+
                 auto mapiter = lm.encode_map.find(vocabItem);
                 if (mapiter != lm.encode_map.end()) {
                     orig_query.push_back(mapiter->second);
@@ -175,6 +184,8 @@ float * NematusLM::processBatch(char * path_to_ngrams_file) {
     float * all_results = new float[total_num_queries]; //Allocate all results vector
     size_t results_start_idx = 0; //The current index of the latest results.
 
+    //bool first = true; For debugging
+
     for(auto orig_query : orig_queries) {
         for (unsigned int softmax_vocab_id : softmax_vocab_vec) {
             assert(softmax_vocab_id != 0); //Sanity check
@@ -196,6 +207,19 @@ float * NematusLM::processBatch(char * path_to_ngrams_file) {
             all_queries.clear(); //
             all_queries.reserve((queries_memory*1024*1024 +4)/4);
         }
+/* debugging
+        if (first) {
+            int counter = 0;
+            for (int n = 0; n < softmax_vocab_vec.size(); n++) {
+                for (int t = 0; t < 6; t++) {
+                    std::cout << all_queries[counter] << " ";
+                    counter++;
+                }
+                std::cout << std::endl;
+            }
+            first = false;
+        }
+        */
     }
     //Do the last batch:
     doQueries(all_queries, all_results, results_start_idx);
@@ -231,6 +255,8 @@ boost::python::object NematusLM::processBatchNDARRAY(char * path_to_ngrams_file,
 
     if ((long)lastTotalNumQueries != softmax_size*sentence_length*batch_size) {
         std::cerr << "ARRAY SIZE MISMATCH! SOMETHING IS VERY WRONG!" << std::endl;
+        std::cerr << "Total number of queries: " << lastTotalNumQueries << std::endl;
+        std::cerr << "softmax_size: " << lastTotalNumQueries/(float)(sentence_length*batch_size) << std::endl;
     }
 
     npy_intp shape[2] = {sentence_length*batch_size, softmax_size }; // array size
