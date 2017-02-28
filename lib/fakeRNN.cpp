@@ -1,7 +1,8 @@
 #include "fakeRNN.hh"
 #include <yaml-cpp/yaml.h>
 
-fakeRNN::fakeRNN(std::string glmPath, std::string vocabPath, int gpuDeviceID, int gpuMem) : lm(glmPath), gpuMemLimit(gpuMem) {
+fakeRNN::fakeRNN(std::string glmPath, std::string vocabPath, std::vector<size_t> softmax, int gpuDeviceID, int gpuMem) 
+  : lm(glmPath), softmax_layer(softmax), gpuMemLimit(gpuMem) {
     initGPULM(gpuDeviceID);
     //Read in vocab from json or yaml and create a map from their IDs to ours
     loadVocab(vocabPath);
@@ -18,11 +19,108 @@ void fakeRNN::initGPULM(int gpuDeviceID) {
 
 }
 
-void fakeRNN::batchRNNQuery(std::vector<std::vector<int> >& input, std::vector<float>& output) {
+float * fakeRNN::batchRNNQuery(std::vector<size_t>& input, unsigned int batch_size) {
+    std::vector<std::vector<unsigned int> > sentences;
+    makeSents(input, batch_size, sentences);
 
+    //Make sentences to queries
+    std::vector<std::vector<unsigned int> > queries(batch_size); //@TODO direct memory copy here
+    for (size_t i = 0; i<batch_size; i++) {
+        vocabIDsent2queries(sentences[i], queries[i]);
+    }
+
+    //Reshuffle them to the expected order, batch by batch and not sentences by sentences
+    std::vector<std::vector<unsigned int> >queries_in_batch;
+    queries_in_batch.resize(input.size()*lm.metadata.max_ngram_order);
+    for (size_t i = 0; i<input.size()/batch_size; i++) {
+        for (size_t j = 0; j<batch_size; j++) {
+            queries_in_batch[i+j].reserve(lm.metadata.max_ngram_order);
+            for (unsigned int t = 0; t<lm.metadata.max_ngram_order; t++) {
+                queries_in_batch[i+j].push_back(queries[j][i+t]);
+            }
+        }
+    }
+
+    //Now expand every single query with the softmax layer size @TODO do that in the previous step
+    std::vector<unsigned int> all_queries;
+    all_queries.reserve(input.size()*lm.metadata.max_ngram_order*softmax_layer.size());
+    for (std::vector<unsigned int> query : queries_in_batch) {
+        for (size_t i = 0; i < softmax_layer.size(); i++) {
+            if (query[0] == 0) { //@TODO this is not entirely correct, there would be consecutive EoS tokens which we need to check
+                for (size_t j = 0; j<query.size(); j++) { //@TODO memcpy
+                    all_queries.push_back(query[j]); //queries with leading zeroes will be ignored
+                }
+            } else {
+                all_queries.push_back(softmax_layer[i]);
+                for (size_t j = 1; j<query.size(); j++) {
+                    all_queries.push_back(query[j]);
+                }
+            }
+        }
+    }
+
+    //now dispatch those to the GPU
+    unsigned int num_keys = all_queries.size()/lm.metadata.max_ngram_order; //Get how many ngram queries we have to do
+    unsigned int * gpuKeys = copyToGPUMemory(all_queries.data(), all_queries.size());
+    float * results;
+    allocateGPUMem(num_keys, &results);
+
+    //Search GPU
+    searchWrapper(btree_trie_gpu, first_lvl_gpu, gpuKeys, num_keys, results, lm.metadata.btree_node_size, lm.metadata.max_ngram_order);
+
+    freeGPUMemory(gpuKeys);
+
+    //@TODO prefix sum them
+    return results; //Burden of free is on the callee
 }
 
-void fakeRNN::decodeRNNQuery(std::vector<std::vector<int> >& input, std::vector<float>& output) {
+float * fakeRNN::decodeRNNQuery(std::vector<std::vector<int> >& input, unsigned int batch_size) {
+    float * ret = new float[1];
+    return ret;
+}
+
+void fakeRNN::makeSents(std::vector<size_t>& input, unsigned int batch_size, std::vector<std::vector<unsigned int> >& proper_sents) {
+    //Some memory preallocation
+    size_t BoS = lm.encode_map.find("<s>")->second;
+    proper_sents.reserve(batch_size);
+    for (auto vec : proper_sents) {
+        vec.resize(input.size()/batch_size + 1);//We need a BoS token
+        vec[0] = BoS;
+    }
+
+    //Convert the sentences including
+    for (size_t i = 0; i < input.size()/batch_size; i++) {
+        for (size_t j = 0; j<batch_size; j++) {
+            proper_sents[j][i + 1] = marian2glmIDs.find(input[i + batch_size*j])->second; //We always start with BoS although we don't care for it
+        }
+    }
+}
+
+void fakeRNN::vocabIDsent2queries(std::vector<unsigned int>& vocabIDs, std::vector<unsigned int>& ret) {
+    int ngram_order = lm.metadata.max_ngram_order;
+    ret.reserve((vocabIDs.size() - 1)*ngram_order);
+    int front_idx = 0;
+    int back_idx = 1;
+
+    //In the ret vector put an ngram for every single entry
+    while (back_idx < (int)vocabIDs.size()) {
+        for (int i = back_idx; i >= front_idx; i--) {
+            ret.push_back(vocabIDs[i]);
+        }
+        //Pad with zeroes if we don't have enough
+        int zeroes_to_pad = ngram_order - (back_idx - front_idx) - 1;
+        for (int i = 0; i < zeroes_to_pad; i++) {
+            ret.push_back(0);
+        }
+
+        //determine which ptr to advance
+        if ((back_idx - front_idx) < (ngram_order - 1)) {
+            back_idx++;
+        } else {
+            front_idx++;
+            back_idx++;
+        }
+    }
 
 }
 
@@ -37,7 +135,7 @@ void fakeRNN::loadVocab(const std::string& vocabPath) {
     YAML::Node vocab = YAML::Load(ifs);
     for (auto&& pair : vocab) {
         auto str = pair.first.as<std::string>();
-        auto theirID = pair.second.as<unsigned int>();
+        auto theirID = pair.second.as<size_t>();
 
         //map words to gLM vocab
         if (str == "<s>") {
@@ -52,9 +150,9 @@ void fakeRNN::loadVocab(const std::string& vocabPath) {
         //Find the position in our map
         auto mapiter = lm.encode_map.find(str);
         if (mapiter == lm.encode_map.end()) { //If we can't find the word map their ID to UNK
-            marian2glmIDs.insert(std::pair<unsigned int, unsigned int>(theirID, ourUNKid));
+            marian2glmIDs.insert(std::pair<size_t, unsigned int>(theirID, ourUNKid));
         } else {
-            marian2glmIDs.insert(std::pair<unsigned int, unsigned int>(theirID, mapiter->second));
+            marian2glmIDs.insert(std::pair<size_t, unsigned int>(theirID, mapiter->second));
         }
     }
     ifs.close();
