@@ -4,7 +4,8 @@
 class fakeRNN {
     private:
         LM lm;
-        std::vector<size_t> softmax_layer;
+        unsigned int softmax_layer_size;
+        std::vector<unsigned int> softmax_layer;
 
         //GPU pointers
         unsigned char * btree_trie_gpu;
@@ -23,9 +24,9 @@ class fakeRNN {
         int gpuMemLimit; //How much GPU memory in total can we use
         int queryMemory; //How much memory on the GPU can we use for queries
 
-        fakeRNN(std::string, std::string, std::vector<size_t>, int, int);
-        float * batchRNNQuery(std::vector<size_t>& input, unsigned int batch_size);
-        float * decodeRNNQuery(std::vector<std::vector<int> >& input, unsigned int batch_size);
+        fakeRNN(std::string, std::string, int, int, int);
+        void batchRNNQuery(std::vector<size_t>& input, unsigned int batch_size, float * gpuMemory);
+        void decodeRNNQuery(std::vector<std::vector<int> >& input, unsigned int batch_size, float * gpuMemory);
         void loadVocab(const std::string& vocabPath);
         ~fakeRNN() {
             deleteGPULM();

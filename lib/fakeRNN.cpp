@@ -1,25 +1,32 @@
 #include "fakeRNN.hh"
 #include <yaml-cpp/yaml.h>
 
-fakeRNN::fakeRNN(std::string glmPath, std::string vocabPath, std::vector<size_t> softmax, int gpuDeviceID, int gpuMem) 
-  : lm(glmPath), softmax_layer(softmax), gpuMemLimit(gpuMem) {
+fakeRNN::fakeRNN(std::string glmPath, std::string vocabPath, int softmax_size, int gpuDeviceID, int gpuMem)
+  : lm(glmPath), softmax_layer_size(softmax_size), gpuMemLimit(gpuMem) {
     initGPULM(gpuDeviceID);
-    //Read in vocab from json or yaml and create a map from their IDs to ours
+    //Read in vocab from json or yaml and create a map from their IDs to ours, as well as softmax vocab vector
     loadVocab(vocabPath);
 }
 
 void fakeRNN::initGPULM(int gpuDeviceID) {
     setGPUDevice(gpuDeviceID);
+    int modelMemoryUsage = lm.metadata.byteArraySize/(1024*1024) +  (lm.metadata.intArraySize*4/(1024*1024)); //GPU memory used by the model in MB
+
+    if (modelMemoryUsage > gpuMemLimit) {
+        std::cerr << "Not enough memory to load the language model on the GPU! The model size is " << modelMemoryUsage
+        << "MB. but we are only allowed to use " << gpuMemLimit << "MB. Try increasing this limit." << std::endl;
+        std::exit(1);
+    }
 
     //Create the models
     btree_trie_gpu = copyToGPUMemory(lm.trieByteArray.data(), lm.trieByteArray.size());
     first_lvl_gpu = copyToGPUMemory(lm.first_lvl.data(), lm.first_lvl.size());
-    int modelMemoryUsage = lm.metadata.byteArraySize/(1024*1024) +  (lm.metadata.intArraySize*4/(1024*1024)); //GPU memory used by the model in MB
+
     queryMemory = gpuMemLimit - modelMemoryUsage;
 
 }
 
-float * fakeRNN::batchRNNQuery(std::vector<size_t>& input, unsigned int batch_size) {
+void fakeRNN::batchRNNQuery(std::vector<size_t>& input, unsigned int batch_size, float * gpuMemoryResults) {
     std::vector<std::vector<unsigned int> > sentences;
     makeSents(input, batch_size, sentences);
 
@@ -62,24 +69,18 @@ float * fakeRNN::batchRNNQuery(std::vector<size_t>& input, unsigned int batch_si
     }
 
     //now dispatch those to the GPU
+    //@TODO obey memory limits
     unsigned int num_keys = all_queries.size()/lm.metadata.max_ngram_order; //Get how many ngram queries we have to do
     unsigned int * gpuKeys = copyToGPUMemory(all_queries.data(), all_queries.size());
-    float * results;
-    allocateGPUMem(num_keys, &results);
 
     //Search GPU
-    searchWrapper(btree_trie_gpu, first_lvl_gpu, gpuKeys, num_keys, results, lm.metadata.btree_node_size, lm.metadata.max_ngram_order);
+    searchWrapper(btree_trie_gpu, first_lvl_gpu, gpuKeys, num_keys, gpuMemoryResults, lm.metadata.btree_node_size, lm.metadata.max_ngram_order);
 
     freeGPUMemory(gpuKeys);
-
-    //@TODO prefix sum them
-    //@TODO obey memory limits
-    return results; //Burden of free is on the callee
 }
 
-float * fakeRNN::decodeRNNQuery(std::vector<std::vector<int> >& input, unsigned int batch_size) {
-    float * ret = new float[1];
-    return ret;
+void fakeRNN::decodeRNNQuery(std::vector<std::vector<int> >& input, unsigned int batch_size, float * gpuMemoryResults) {
+    std::cerr << "stub! decodenRNNQuery not implemented yet!" << std::endl;
 }
 
 void fakeRNN::makeSents(std::vector<size_t>& input, unsigned int batch_size, std::vector<std::vector<unsigned int> >& proper_sents) {
@@ -150,13 +151,24 @@ void fakeRNN::loadVocab(const std::string& vocabPath) {
             str = "<unk>"; //Thier unk to our unk
         }
 
-        //Find the position in our map
-        auto mapiter = lm.encode_map.find(str);
-        if (mapiter == lm.encode_map.end()) { //If we can't find the word map their ID to UNK
-            marian2glmIDs.insert(std::pair<size_t, unsigned int>(theirID, ourUNKid));
+        if (theirID < softmax_layer_size) {
+            //Find the position in our map
+            auto mapiter = lm.encode_map.find(str);
+            if (mapiter == lm.encode_map.end()) { //If we can't find the word map their ID to UNK
+                marian2glmIDs.insert(std::pair<size_t, unsigned int>(theirID, ourUNKid));
+            } else {
+                marian2glmIDs.insert(std::pair<size_t, unsigned int>(theirID, mapiter->second));
+            }
         } else {
-            marian2glmIDs.insert(std::pair<size_t, unsigned int>(theirID, mapiter->second));
+            //We have reached vocabulary cutoff, anything else just gets mapped to unk
+            marian2glmIDs.insert(std::pair<size_t, unsigned int>(theirID, ourUNKid));
         }
     }
     ifs.close();
+
+    //Now populate the softmax_layer_vector, which is just our vocabIDs sorted by theirID order
+    softmax_layer.reserve(softmax_layer_size);
+    for (size_t i = 0; i < softmax_layer_size; i++) {
+        softmax_layer.push_back(marian2glmIDs.find(i)->second);
+    }
 }
