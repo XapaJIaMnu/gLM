@@ -42,13 +42,15 @@ float * fakeRNN::batchRNNQuery(std::vector<size_t>& input, unsigned int batch_si
     }
 
     //Now expand every single query with the softmax layer size @TODO do that in the previous step
+    size_t EoS = lm.encode_map.find("</s>")->second;
     std::vector<unsigned int> all_queries;
     all_queries.reserve(input.size()*lm.metadata.max_ngram_order*softmax_layer.size());
     for (std::vector<unsigned int> query : queries_in_batch) {
         for (size_t i = 0; i < softmax_layer.size(); i++) {
-            if (query[0] == 0) { //@TODO this is not entirely correct, there would be consecutive EoS tokens which we need to check
+            if (query[0] == EoS && query[1] == EoS) { //if a query contains two consecutive EoS (</s>) symbols it means it should be discarded
+                                                      //because that's just the section of padded zeroes at the end to be ignored.
                 for (size_t j = 0; j<query.size(); j++) { //@TODO memcpy
-                    all_queries.push_back(query[j]); //queries with leading zeroes will be ignored
+                    all_queries.push_back(0); //queries with leading zeroes will be ignored
                 }
             } else {
                 all_queries.push_back(softmax_layer[i]);
@@ -71,6 +73,7 @@ float * fakeRNN::batchRNNQuery(std::vector<size_t>& input, unsigned int batch_si
     freeGPUMemory(gpuKeys);
 
     //@TODO prefix sum them
+    //@TODO obey memory limits
     return results; //Burden of free is on the callee
 }
 
