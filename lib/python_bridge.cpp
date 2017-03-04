@@ -28,6 +28,30 @@ boost::python::object testNDARRAY(long softmax_size, long sentence_length, long 
     return object(array);
 }
 
+boost::python::object ndARRAYTest() {
+    float * result = new float[8]; //leaks, i know, sue me it's just for testing
+    result[0] = 10;
+    result[1] = 10;
+    result[2] = 20;
+    result[3] = 20;
+    result[4] = 11;
+    result[5] = 11;
+    result[6] = 22;
+    result[7] = 22;
+    //That's 2 sentences (batch=2) of length two with softmax of size 2
+    //result = {10,10,20,20,11,11,22,22};
+
+    npy_intp shape[2] = {4, 2}; // array size
+    PyObject* obj = PyArray_SimpleNewFromData(2, shape, NPY_FLOAT, result);
+    /*PyObject* obj = PyArray_New(&PyArray_Type, 1, shape, NPY_FLOAT, // data type
+                              NULL, result, // data pointer
+                              0, NPY_ARRAY_CARRAY_RO, // NPY_ARRAY_CARRAY_RO for readonly
+                              NULL);*/
+    handle<> array( obj );
+    return object(array);
+}
+
+
 
 BOOST_PYTHON_MODULE(libngrams_nematus)
 {
@@ -39,5 +63,6 @@ BOOST_PYTHON_MODULE(libngrams_nematus)
         .def("freeResultsMemory", &NematusLM::freeResultsMemory)
         .def("testNDARRAY", &testNDARRAY)
         .staticmethod("testNDARRAY")
-    ;
+        .def("testNDARRAY2", &ndARRAYTest)
+        .staticmethod("testNDARRAY2");
 }
