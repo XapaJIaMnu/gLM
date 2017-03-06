@@ -85,13 +85,13 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
         __syncthreads();
 
         //Set the start index
-        unsigned int current_btree_start = *next_level*4;
+        size_t current_btree_start = *next_level*4;
         current_ngram++;
         key = keys_shared[current_ngram];
 
         //Some necessary variables
         unsigned int updated_idx;
-        unsigned int size;
+        size_t size;
 
         //Current_btree_start == 0 means that we had UNK key (vocabID 1 which wasn't found, so we should directly go to backoff
         //@TODO we can check if key[0] == 1 when we get the score too
