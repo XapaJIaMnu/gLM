@@ -21,8 +21,8 @@ class fakeRNN {
         void makeSents(std::vector<size_t>& input, unsigned int batch_size, std::vector<std::vector<unsigned int> >& proper_sents);
         void vocabIDsent2queries(std::vector<unsigned int>& vocabIDs, std::vector<unsigned int>& ret);
     public:
-        int gpuMemLimit; //How much GPU memory in total can we use
-        int queryMemory; //How much memory on the GPU can we use for queries
+        unsigned int gpuMemLimit; //How much GPU memory in total can we use
+        unsigned int queryMemory; //How much memory on the GPU can we use for queries
 
         fakeRNN(std::string, std::string, int, int, int);
         void batchRNNQuery(std::vector<size_t>& input, unsigned int batch_size, float * gpuMemory);

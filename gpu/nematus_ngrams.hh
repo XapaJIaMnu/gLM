@@ -169,14 +169,14 @@ float * NematusLM::processBatch(char * path_to_ngrams_file) {
 
     //Now we need to expand the queries. Basically every lm.metadata.max_ngram_order word (starting from the first)
     //needs to be replaced byt the full softmax layer
-    std::cout << "Total memory required: " << orig_queries.size()*softmax_vocab_vec.size()*lm.metadata.max_ngram_order*4/(1024*1024) << " MB." << std::endl;
-    std::cout << "We are allowed to use " << gpuMemLimit << "MB out of which the model takes: " << modelMemoryUsage << "MB leaving us with: "
+    std::cerr << "Total memory required: " << orig_queries.size()*softmax_vocab_vec.size()*lm.metadata.max_ngram_order*4/(1024*1024) << " MB." << std::endl;
+    std::cerr << "We are allowed to use " << gpuMemLimit << "MB out of which the model takes: " << modelMemoryUsage << "MB leaving us with: "
     << queryMemory << "MB to use for queries." << std::endl;
     //Actually we can use a bit less than queryMemory for our queries, because we need to allocate an array on the GPU that will hold the results, so 
     //We need to calculate that now. Results memory is 1/max_ngram_order of the queryMemory (one float for every max_ngram_order vocab IDs)
     unsigned int queries_memory = (queryMemory*lm.metadata.max_ngram_order)/(lm.metadata.max_ngram_order + 1);
     unsigned int results_memory = queryMemory - queries_memory;
-    std::cout << "Query memory: " << queries_memory << "MB. Results memory: " << results_memory << "MB." << std::endl;
+    std::cerr << "Query memory: " << queries_memory << "MB. Results memory: " << results_memory << "MB." << std::endl;
 
     std::vector<unsigned int> all_queries;
     all_queries.reserve((queries_memory*1024*1024 +4)/4);
@@ -225,12 +225,13 @@ float * NematusLM::processBatch(char * path_to_ngrams_file) {
     doQueries(all_queries, all_results, results_start_idx);
     lastTotalNumQueries = total_num_queries;
 
+    /* debugging
     std::cout << "First ten entries: " << std::endl;
     for (int i = 0; i < 10; i++) {
         std::cout << all_results[i] << " ";
     }
     std::cout << std::endl;
-
+    */
     memory_tracker.push_back(all_results);
 
     return all_results;
