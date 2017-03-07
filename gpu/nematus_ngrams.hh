@@ -174,8 +174,8 @@ float * NematusLM::processBatch(char * path_to_ngrams_file) {
     << queryMemory << "MB to use for queries." << std::endl;
     //Actually we can use a bit less than queryMemory for our queries, because we need to allocate an array on the GPU that will hold the results, so 
     //We need to calculate that now. Results memory is 1/max_ngram_order of the queryMemory (one float for every max_ngram_order vocab IDs)
-    unsigned int queries_memory = (queryMemory*lm.metadata.max_ngram_order)/(lm.metadata.max_ngram_order + 1);
-    unsigned int results_memory = queryMemory - queries_memory;
+    int queries_memory = (queryMemory*lm.metadata.max_ngram_order)/(lm.metadata.max_ngram_order + 1);
+    int results_memory = queryMemory - queries_memory;
     std::cerr << "Query memory: " << queries_memory << "MB. Results memory: " << results_memory << "MB." << std::endl;
 
     std::vector<unsigned int> all_queries;
@@ -199,7 +199,7 @@ float * NematusLM::processBatch(char * path_to_ngrams_file) {
             }
             assert(all_queries.size() % lm.metadata.max_ngram_order == 0); //Sanity check
         }
-        if (all_queries.size()*4/(1024*1024) >= queries_memory) {
+        if ((int)all_queries.size()*4/(1024*1024) >= queries_memory) {
             //Flush the vector, send the queries to the GPU and write them to a file.
             doQueries(all_queries, all_results, results_start_idx);
             results_start_idx += all_queries.size()/lm.metadata.max_ngram_order; //Update the start index for the next set of results.
