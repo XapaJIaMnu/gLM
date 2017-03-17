@@ -1,4 +1,3 @@
-find_package(CUDA REQUIRED) # For when we add CUDA files
 if (${DEBUGBUILD} EQUAL 0)
     set(CUDA_NVCC_FLAGS "-lcudart; -O3")
 else()

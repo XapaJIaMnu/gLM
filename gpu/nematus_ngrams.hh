@@ -11,9 +11,7 @@ class NematusLM {
     private:
         LM lm;
 
-        //GPU pointers
-        unsigned char * btree_trie_gpu;
-        unsigned int * first_lvl_gpu;
+        GPUSearcher engine;
 
         std::vector<float *> memory_tracker;
 
@@ -51,21 +49,15 @@ class NematusLM {
         boost::python::object processBatchNDARRAY(char * path_to_ngrams_file, long softmax_size, long sentence_length, long batch_size);
         
         ~NematusLM() {
-            freeGPUMemory(btree_trie_gpu);
-            freeGPUMemory(first_lvl_gpu);
             freeResultsMemory();
         }
 };
 
-NematusLM::NematusLM(char * path, char * vocabFilePath, unsigned int maxGPUMemoryMB, int gpuDeviceID = 0) : lm(path) {
-    setGPUDevice(gpuDeviceID);
+NematusLM::NematusLM(char * path, char * vocabFilePath, unsigned int maxGPUMemoryMB, int gpuDeviceID = 0) : lm(path), engine(1, lm, gpuDeviceID) {
 
     //Total GPU memory allowed to use (in MB):
     gpuMemLimit = maxGPUMemoryMB;
 
-    //Create the models
-    btree_trie_gpu = copyToGPUMemory(lm.trieByteArray.data(), lm.trieByteArray.size());
-    first_lvl_gpu = copyToGPUMemory(lm.first_lvl.data(), lm.first_lvl.size());
     modelMemoryUsage = lm.metadata.byteArraySize/(1024*1024) +  (lm.metadata.intArraySize*4/(1024*1024)); //GPU memory used by the model in MB
     queryMemory = gpuMemLimit - modelMemoryUsage; //How much memory do we have for the queries
 
@@ -98,7 +90,7 @@ void NematusLM::doQueries(std::vector<unsigned int>& queries, float * result_sto
     allocateGPUMem(num_keys, &results);
 
     //Search GPU
-    searchWrapper(btree_trie_gpu, first_lvl_gpu, gpuKeys, num_keys, results, lm.metadata.btree_node_size, lm.metadata.max_ngram_order);
+    engine.search(gpuKeys, num_keys, results, 0);
 
     //Copy results to host and store them:
     copyToHostMemory(results, &result_storage[results_start_idx], num_keys);

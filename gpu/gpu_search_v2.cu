@@ -1,6 +1,6 @@
-#include "gpu_search.hh"
+#include "gpu_search_v2.hh"
 #include "gpu_common.h"
-#include <cuda_runtime.h>
+#include "memory_management.hh"
 
 #define big_entry 16
 #define small_entry 8
@@ -948,7 +948,7 @@ void searchWrapper(unsigned char * btree_trie_mem, unsigned int * first_lvl, uns
 }
 
 void searchWrapperStream(unsigned char * btree_trie_mem, unsigned int * first_lvl, unsigned int * keys,
- unsigned int num_ngram_queries, float * results, unsigned int entries_per_node, unsigned int max_ngram, cudaStream_t& stream) {
+ unsigned int num_ngram_queries, float * results, unsigned int entries_per_node, unsigned int max_ngram, cudaStream_t& stream, bool debug) {
 
 
     unsigned int max_num_children = entries_per_node + 1;
@@ -960,11 +960,12 @@ void searchWrapperStream(unsigned char * btree_trie_mem, unsigned int * first_lv
 
     kernelTemplateWrapper(btree_trie_mem, first_lvl, keys, num_ngram_queries, results, entries_per_node, max_num_children, max_ngram, stream, start, stop);
 
-    float milliseconds = 0;
-    cudaEventElapsedTime(&milliseconds, start, stop);
-    printf("Searched for %d ngrams in: %f milliseconds.\n", num_ngram_queries, milliseconds);
-    printf("Throughput: %d queries per second.\n", (int)((num_ngram_queries/(milliseconds))*1000));
-
+    if (debug) {
+        float milliseconds = 0;
+        cudaEventElapsedTime(&milliseconds, start, stop);
+        printf("Searched for %d ngrams in: %f milliseconds.\n", num_ngram_queries, milliseconds);
+        printf("Throughput: %d queries per second.\n", (int)((num_ngram_queries/(milliseconds))*1000));
+    }
 }
 
 void cudaDevSync() {
@@ -976,22 +977,53 @@ void setGPUDevice(int deviceID) {
     CHECK_CALL(cudaSetDevice(deviceID));
 }
 
-class GPUSearcher {
-    private:
-        cudaStream_t * streams;
-        int num_streams;
-    public:
-        //GPUSearcher(int);
-        GPUSearcher(int num) {
-            num_streams = num;
-            streams = new cudaStream_t[num_streams];
-            for (int i = 0; i < num_streams; i++) {
-                CHECK_CALL(cudaStreamCreate(&streams[i]));
-            }
-        }
-        ~GPUSearcher() {
-            for (int i = 0; i < num_streams; i++) {
-                CHECK_CALL(cudaStreamDestroy(streams[i]));
-            }
-        }
-};
+void GPUSearcher::search(unsigned int * keys, unsigned int num_ngram_queries, float * results, int streamID, bool debug) {
+    if (streamID > num_streams - 1) {
+        std::cerr << "Provided stream greater than the available ones. Using stream 0 as default. Fix your code!" << std::endl;
+        streamID = 0;
+    }
+
+    searchWrapperStream(btree_trie_gpu, first_lvl_gpu, keys, num_ngram_queries, results, lm.metadata.btree_node_size,
+     lm.metadata.max_ngram_order, streams[streamID], debug);
+}
+
+GPUSearcher::GPUSearcher(int num, LM& lm_) : lm(lm_) {
+    //Init GPU memory
+    btree_trie_gpu = copyToGPUMemory(lm.trieByteArray.data(), lm.trieByteArray.size());
+    first_lvl_gpu = copyToGPUMemory(lm.first_lvl.data(), lm.first_lvl.size());
+
+    num_streams = num;
+    if (num_streams < 1) {
+        std::cerr << "You have specified " << num << " number of streams however it must be at least 1. Using 1 stream as default. Fix your code!" << std::endl;
+        num_streams = 1;
+    }
+    streams = new cudaStream_t[num_streams];
+    for (int i = 0; i < num_streams; i++) {
+        CHECK_CALL(cudaStreamCreate(&streams[i]));
+    }
+}
+
+GPUSearcher::GPUSearcher(int num, LM& lm_, int gpuDeviceID) : lm(lm_) {
+    setGPUDevice(gpuDeviceID);
+    //Init GPU memory
+    btree_trie_gpu = copyToGPUMemory(lm.trieByteArray.data(), lm.trieByteArray.size());
+    first_lvl_gpu = copyToGPUMemory(lm.first_lvl.data(), lm.first_lvl.size());
+
+    num_streams = num;
+    if (num_streams < 1) {
+        std::cerr << "You have specified " << num << " number of streams however it must be at least 1. Using 1 stream as default. Fix your code!" << std::endl;
+        num_streams = 1;
+    }
+    streams = new cudaStream_t[num_streams];
+    for (int i = 0; i < num_streams; i++) {
+        CHECK_CALL(cudaStreamCreate(&streams[i]));
+    }
+}
+
+GPUSearcher::~GPUSearcher() {
+    for (int i = 0; i < num_streams; i++) {
+        CHECK_CALL(cudaStreamDestroy(streams[i]));
+    }
+    freeGPUMemory(btree_trie_gpu);
+    freeGPUMemory(first_lvl_gpu);
+}

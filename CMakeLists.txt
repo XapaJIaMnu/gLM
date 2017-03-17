@@ -51,7 +51,8 @@ endif()
 if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.0)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 endif()
-
+find_package(CUDA REQUIRED) # For when we add CUDA files
+include_directories (${CUDA_INCLUDE_DIRS})
 #Add include directories
 include_directories ("${PROJECT_SOURCE_DIR}/Btree")
 include_directories ("${PROJECT_SOURCE_DIR}/Trie")
