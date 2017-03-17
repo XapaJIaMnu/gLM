@@ -4,18 +4,9 @@
 class fakeRNN {
     private:
         LM lm;
+        GPUSearcher engine;
         unsigned int softmax_layer_size;
         std::vector<unsigned int> softmax_layer;
-
-        //GPU pointers
-        unsigned char * btree_trie_gpu;
-        unsigned int * first_lvl_gpu;
-
-        void initGPULM(int gpuDeviceId = 0);
-        void deleteGPULM() {
-            freeGPUMemory(btree_trie_gpu);
-            freeGPUMemory(first_lvl_gpu);
-        }
 
         std::unordered_map<size_t, unsigned int> marian2glmIDs;
         void makeSents(std::vector<size_t>& input, unsigned int batch_size, std::vector<std::vector<unsigned int> >& proper_sents);
@@ -28,7 +19,4 @@ class fakeRNN {
         void batchRNNQuery(std::vector<size_t>& input, unsigned int batch_size, float * gpuMemory);
         void decodeRNNQuery(std::vector<std::vector<int> >& input, unsigned int batch_size, float * gpuMemory);
         void loadVocab(const std::string& vocabPath);
-        ~fakeRNN() {
-            deleteGPULM();
-        }
 };

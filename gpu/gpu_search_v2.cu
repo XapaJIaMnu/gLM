@@ -1021,9 +1021,9 @@ GPUSearcher::GPUSearcher(int num, LM& lm_, int gpuDeviceID) : lm(lm_) {
 }
 
 GPUSearcher::~GPUSearcher() {
+    freeGPUMemory(btree_trie_gpu);
+    freeGPUMemory(first_lvl_gpu);
     for (int i = 0; i < num_streams; i++) {
         CHECK_CALL(cudaStreamDestroy(streams[i]));
     }
-    freeGPUMemory(btree_trie_gpu);
-    freeGPUMemory(first_lvl_gpu);
 }

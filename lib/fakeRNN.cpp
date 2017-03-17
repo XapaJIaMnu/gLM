@@ -2,15 +2,9 @@
 #include <yaml-cpp/yaml.h>
 
 fakeRNN::fakeRNN(std::string glmPath, std::string vocabPath, int softmax_size, int gpuDeviceID, int gpuMem)
-  : lm(glmPath), softmax_layer_size(softmax_size), gpuMemLimit(gpuMem) {
-    initGPULM(gpuDeviceID);
-    //Read in vocab from json or yaml and create a map from their IDs to ours, as well as softmax vocab vector
-    loadVocab(vocabPath);
-}
+  : lm(glmPath), engine(1, lm, gpuDeviceID), softmax_layer_size(softmax_size), gpuMemLimit(gpuMem) {
 
-void fakeRNN::initGPULM(int gpuDeviceID) {
-    setGPUDevice(gpuDeviceID);
-    unsigned int modelMemoryUsage = lm.metadata.byteArraySize/(1024*1024) + (lm.metadata.intArraySize*4/(1024*1024)); //GPU memory used by the model in MB
+    int modelMemoryUsage = lm.metadata.byteArraySize/(1024*1024) + (lm.metadata.intArraySize*4/(1024*1024)); //GPU memory used by the model in MB
 
     if (modelMemoryUsage > gpuMemLimit) {
         std::cerr << "Not enough memory to load the language model on the GPU! The model size is " << modelMemoryUsage
@@ -18,12 +12,9 @@ void fakeRNN::initGPULM(int gpuDeviceID) {
         std::exit(1);
     }
 
-    //Create the models
-    btree_trie_gpu = copyToGPUMemory(lm.trieByteArray.data(), lm.trieByteArray.size());
-    first_lvl_gpu = copyToGPUMemory(lm.first_lvl.data(), lm.first_lvl.size());
-
     queryMemory = gpuMemLimit - modelMemoryUsage;
-
+    //Read in vocab from json or yaml and create a map from their IDs to ours, as well as softmax vocab vector
+    loadVocab(vocabPath);
 }
 
 void fakeRNN::batchRNNQuery(std::vector<size_t>& input, unsigned int batch_size, float * gpuMemoryResults) {
@@ -71,11 +62,11 @@ void fakeRNN::batchRNNQuery(std::vector<size_t>& input, unsigned int batch_size,
     //now dispatch those to the GPU
     //@TODO obey memory limits
     unsigned int num_keys = all_queries.size()/lm.metadata.max_ngram_order; //Get how many ngram queries we have to do
-    if (queryMemory < all_queries.size()*4/(1024*1024)) {
+    if (queryMemory < (int)(all_queries.size()*4/(1024*1024))) {
         unsigned int * gpuKeys = copyToGPUMemory(all_queries.data(), all_queries.size());
 
         //Search GPU
-        searchWrapper(btree_trie_gpu, first_lvl_gpu, gpuKeys, num_keys, gpuMemoryResults, lm.metadata.btree_node_size, lm.metadata.max_ngram_order);
+        engine.search(gpuKeys, num_keys, gpuMemoryResults, 0);
         freeGPUMemory(gpuKeys);
     } else {
         //Estimate at most how many keys we can fit in one query on the GPU
@@ -92,7 +83,7 @@ void fakeRNN::batchRNNQuery(std::vector<size_t>& input, unsigned int batch_size,
             unsigned int * gpuKeys = copyToGPUMemory(all_queries.data()+(queried_so_far*lm.metadata.max_ngram_order*4), estimate_keys*lm.metadata.max_ngram_order);
 
             //Search GPU
-            searchWrapper(btree_trie_gpu, first_lvl_gpu, gpuKeys+queried_so_far, estimate_keys, gpuMemoryResults, lm.metadata.btree_node_size, lm.metadata.max_ngram_order);
+            engine.search(gpuKeys+queried_so_far, estimate_keys, gpuMemoryResults, 0);
             freeGPUMemory(gpuKeys);
         }
     }
