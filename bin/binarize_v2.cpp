@@ -4,10 +4,10 @@
 
 int main(int argc, char* argv[]){
     if (argc != 5 && argc != 3 && argc != 4) {
-        std::cerr << "Usage:" << std::endl << argv[0] << " path_to_arpa_file output_path [btree_node_size]." << std::endl;
+        std::cerr << "Usage:" << std::endl << argv[0] << " path_to_arpa_file output_path [btree_node_size=31]." << std::endl;
         std::exit(EXIT_FAILURE);
     }
-    unsigned short btree_node_size = 33;
+    unsigned short btree_node_size = 31;
 
     if (argc == 4) {
         btree_node_size = atoi(argv[3]);
