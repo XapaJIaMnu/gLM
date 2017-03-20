@@ -60,3 +60,11 @@ target_link_libraries(gpu_LM_test_v2
                       ${Boost_FILESYSTEM_LIBRARY}
                       ${Boost_SYSTEM_LIBRARY}
                       )
+
+add_executable(ngram_test_v2 ngram_test_v2.cpp)
+target_link_libraries(ngram_test_v2
+                      memory_management
+                      gpu_search_v2
+                      ${Boost_FILESYSTEM_LIBRARY}
+                      ${Boost_SYSTEM_LIBRARY}
+                      )
