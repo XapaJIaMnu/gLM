@@ -303,4 +303,47 @@ BOOST_AUTO_TEST_CASE(micro_LM_test_normal_streams)  {
 
 }
 
+BOOST_AUTO_TEST_CASE(micro_LM_test_exp_streams)  {
+    LM lm;
+    createTrie(ARPA_TESTFILEPATH, lm, 31); //Use a large amount of entries per node
+    
+    GPUSearcher engine(2, lm, true);
+
+    //Test if we have full queries and backoff working correctly with our toy dataset
+    //The values that we have are tested against KenLM and we definitely get the same
+    std::string sentence1 = "how are you doing today my really good man"; //Sentence with no backoff
+    std::string sentence2 = "one oov word";
+    std::string sentence3 = "a long sentence with many oov words and various other nicenesses";
+    std::string sentence4 = "oov at beginning and oov at the end : unk";
+
+    float expected1[10] = {0.02262, 0.07312, 0.08240, 0.02383, 0.05071, 0.06406, 0.02790, 0.02658, 0.02658, 0.06322};
+    float expected2[4] = {0.05372, 0.02116, 0.02884, 0.06322};
+    float expected3[12] = {0.08193, 0.02899, 0.02327, 0.11655, 0.03594, 0.02327, 0.02525, 0.18613, 0.02282, 0.04260, 0.02274, 0.06860};
+    float expected4[11] = {0.01397, 0.08407, 0.01958, 0.18613, 0.01998, 0.08407, 0.60633, 0.03968, 0.03638, 0.02327, 0.06860};
+
+    //Query on the GPU
+    std::unique_ptr<float[]> res_1 = sent2ResultsVector(sentence1, engine, 1);
+    std::unique_ptr<float[]> res_2 = sent2ResultsVector(sentence2, engine, 0);
+    std::unique_ptr<float[]> res_3 = sent2ResultsVector(sentence3, engine, 1);
+    std::unique_ptr<float[]> res_4 = sent2ResultsVector(sentence4, engine, 0);
+
+    //Check if the results are as expected
+    std::pair<bool, unsigned int> is_correct = checkIfSame(expected1, res_1.get(), 10);
+    BOOST_CHECK_MESSAGE(is_correct.first, "Error! Mismatch at index " << is_correct.second << " in sentence number 1: Expected: "
+        << expected1[is_correct.second] << ", got: " << res_1[is_correct.second]);
+
+    is_correct = checkIfSame(expected2, res_2.get(), 4);
+    BOOST_CHECK_MESSAGE(is_correct.first, "Error! Mismatch at index " << is_correct.second << " in sentence number 2: Expected: "
+        << expected2[is_correct.second] << ", got: " << res_2[is_correct.second]);
+
+    is_correct = checkIfSame(expected3, res_3.get(), 12);
+    BOOST_CHECK_MESSAGE(is_correct.first, "Error! Mismatch at index " << is_correct.second << " in sentence number 3: Expected: "
+        << expected3[is_correct.second] << ", got: " << res_3[is_correct.second]);
+
+    is_correct = checkIfSame(expected4, res_4.get(), 11);
+    BOOST_CHECK_MESSAGE(is_correct.first, "Error! Mismatch at index " << is_correct.second << " in sentence number 4: Expected: "
+        << expected4[is_correct.second] << ", got: " << res_4[is_correct.second]);
+
+}
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -5,16 +5,21 @@
 #define big_entry 16
 #define small_entry 8
 
-__device__ void identity(float& num) {
-    return;
-}
+struct identity {
+    __device__ void operator()(float& num) {
+        return;
+    }
+};
 
-__device__ void exp_fn(float& num) {
-    num = expf(num);
-}
+struct exponentify {
+    __device__ void operator()(float& num) {
+        num = expf(num);
+    }
+};
 
-template<unsigned int max_num_children, unsigned int entries_per_node, unsigned int max_ngram>
-__global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * first_lvl, unsigned int * keys, float * results) {
+
+template<unsigned int max_num_children, unsigned int entries_per_node, unsigned int max_ngram, class Functor>
+__global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * first_lvl, unsigned int * keys, float * results, Functor fn) {
 
     __shared__ unsigned int offsets[max_num_children/2 +1]; //Reads in the first child offset + the shorts
     __shared__ unsigned int entries_actual[entries_per_node + 1];
@@ -329,6 +334,7 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
     } //key != 0
     //Write the correct result at the end
     if (i == 0) {
+        fn(accumulated_score); //This is basically either identity or exp, depending on what we need
         results[blockIdx.x] = accumulated_score;
     }
 }
@@ -342,21 +348,38 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
 */
 inline void kernelTemplateWrapper(unsigned char * btree_trie_mem, unsigned int * first_lvl, unsigned int * keys,
  unsigned int num_ngram_queries, float * results, unsigned int entries_per_node, unsigned int max_num_children,
-  unsigned int max_ngram, cudaStream_t& stream){
+  unsigned int max_ngram, cudaStream_t& stream, bool exponent){
     if (max_ngram == 6) {
         if (entries_per_node == 31) {
-            gpuSearchBtree<32, 31, 6><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results);
+            if (exponent) {
+                gpuSearchBtree<32, 31, 6><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, identity());
+            } else {
+                gpuSearchBtree<32, 31, 6><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, exponentify());
+            }
+        } else { 
             printf("No template argument for node size %d and number of ngrams %d. If you want to use this configuration add it in %s:%d.\n",
              entries_per_node, max_ngram, __FILE__, __LINE__);
             exit(EXIT_FAILURE);
         }
     } else if (max_ngram == 5) {
         if (entries_per_node == 7) {
-            gpuSearchBtree<8, 7, 5><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results);
+            if (exponent) {
+                gpuSearchBtree<8, 7, 5><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, exponentify());
+            } else {
+                gpuSearchBtree<8, 7, 5><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, identity());
+            }
         } else if (entries_per_node == 31) {
-            gpuSearchBtree<32, 31, 5><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results);
+            if (exponent) {
+                gpuSearchBtree<32, 31, 5><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, exponentify());
+            } else {
+                gpuSearchBtree<32, 31, 5><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, identity());
+            }
         } else if (entries_per_node == 127) {
-            gpuSearchBtree<128, 127, 5><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results);
+            if (exponent) {
+                gpuSearchBtree<128, 127, 5><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, exponentify());    
+            } else {
+                gpuSearchBtree<128, 127, 5><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, identity());
+            }
         } else {
             printf("No template argument for node size %d and number of ngrams %d. If you want to use this configuration add it in %s:%d.\n",
              entries_per_node, max_ngram, __FILE__, __LINE__);
@@ -364,11 +387,23 @@ inline void kernelTemplateWrapper(unsigned char * btree_trie_mem, unsigned int *
         }
     } else if (max_ngram == 4) {
         if (entries_per_node == 7) {
-            gpuSearchBtree<8, 7, 4><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results);
+            if (exponent) {
+                gpuSearchBtree<8, 7, 4><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, exponentify());
+            } else {
+                gpuSearchBtree<8, 7, 4><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, identity());
+            }
         } else if (entries_per_node == 31) {
-            gpuSearchBtree<32, 31, 4><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results);
+            if (exponent) {
+                gpuSearchBtree<32, 31, 4><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, exponentify());
+            } else {
+                gpuSearchBtree<32, 31, 4><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, identity());
+            }
         } else if (entries_per_node == 127) {
-            gpuSearchBtree<128, 127, 4><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results);
+            if (exponent) {
+                gpuSearchBtree<128, 127, 4><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, exponentify());    
+            } else {
+                gpuSearchBtree<128, 127, 4><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, identity());
+            }
         } else {
             printf("No template argument for node size %d and number of ngrams %d. If you want to use this configuration add it in %s:%d.\n",
              entries_per_node, max_ngram, __FILE__, __LINE__);
@@ -376,11 +411,23 @@ inline void kernelTemplateWrapper(unsigned char * btree_trie_mem, unsigned int *
         }
     } else if ( max_ngram == 3) {
         if (entries_per_node == 7) {
-            gpuSearchBtree<8, 7, 3><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results);
+            if (exponent) {
+                gpuSearchBtree<8, 7, 3><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, exponentify());
+            } else {
+                gpuSearchBtree<8, 7, 3><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, identity());
+            }
         } else if (entries_per_node == 31) {
-            gpuSearchBtree<32, 31, 3><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results);
+            if (exponent) {
+                gpuSearchBtree<32, 31, 3><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, exponentify());
+            } else {
+                gpuSearchBtree<32, 31, 3><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, identity());
+            }
         } else if (entries_per_node == 127) {
-            gpuSearchBtree<128, 127, 3><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results);            
+            if (exponent) {
+                gpuSearchBtree<128, 127, 3><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, exponentify());    
+            } else {
+                gpuSearchBtree<128, 127, 3><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, identity());            
+            }
         } else {
             printf("No template argument for node size %d and number of ngrams %d. If you want to use this configuration add it in %s:%d.\n",
              entries_per_node, max_ngram, __FILE__, __LINE__);
@@ -395,15 +442,15 @@ inline void kernelTemplateWrapper(unsigned char * btree_trie_mem, unsigned int *
 
 inline void kernelTemplateWrapperDebug(unsigned char * btree_trie_mem, unsigned int * first_lvl, unsigned int * keys,
  unsigned int num_ngram_queries, float * results, unsigned int entries_per_node, unsigned int max_num_children,
-  unsigned int max_ngram, cudaStream_t& stream, cudaEvent_t &start, cudaEvent_t &stop){
+  unsigned int max_ngram, cudaStream_t& stream, cudaEvent_t &start, cudaEvent_t &stop, bool exponent){
     cudaEventRecord(start);
-    kernelTemplateWrapper(btree_trie_mem, first_lvl,  keys, num_ngram_queries, results, entries_per_node, max_num_children, max_ngram, stream);
+    kernelTemplateWrapper(btree_trie_mem, first_lvl,  keys, num_ngram_queries, results, entries_per_node, max_num_children, max_ngram, stream, exponent);
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
 }
 
 void searchWrapper(unsigned char * btree_trie_mem, unsigned int * first_lvl, unsigned int * keys,
- unsigned int num_ngram_queries, float * results, unsigned int entries_per_node, unsigned int max_ngram, bool debug) {
+ unsigned int num_ngram_queries, float * results, unsigned int entries_per_node, unsigned int max_ngram, bool make_exp, bool debug) {
 
     unsigned int max_num_children = entries_per_node + 1;
     cudaStream_t stream;
@@ -415,20 +462,21 @@ void searchWrapper(unsigned char * btree_trie_mem, unsigned int * first_lvl, uns
         cudaEventCreate(&start);
         cudaEventCreate(&stop);
 
-        kernelTemplateWrapperDebug(btree_trie_mem, first_lvl, keys, num_ngram_queries, results, entries_per_node, max_num_children, max_ngram, stream, start, stop);
+        kernelTemplateWrapperDebug(btree_trie_mem, first_lvl, keys, num_ngram_queries, results, entries_per_node,
+         max_num_children, max_ngram, stream, start, stop, make_exp);
 
         float milliseconds = 0;
         cudaEventElapsedTime(&milliseconds, start, stop);
         printf("Searched for %d ngrams in: %f milliseconds.\n", num_ngram_queries, milliseconds);
         printf("Throughput: %d queries per second.\n", (int)((num_ngram_queries/(milliseconds))*1000));
     } else {
-        kernelTemplateWrapper(btree_trie_mem, first_lvl, keys, num_ngram_queries, results, entries_per_node, max_num_children, max_ngram, stream);
+        kernelTemplateWrapper(btree_trie_mem, first_lvl, keys, num_ngram_queries, results, entries_per_node, max_num_children, max_ngram, stream, make_exp);
     }
     CHECK_CALL(cudaStreamDestroy(stream));
 }
 
 void searchWrapperStream(unsigned char * btree_trie_mem, unsigned int * first_lvl, unsigned int * keys,
- unsigned int num_ngram_queries, float * results, unsigned int entries_per_node, unsigned int max_ngram, cudaStream_t& stream, bool debug) {
+ unsigned int num_ngram_queries, float * results, unsigned int entries_per_node, unsigned int max_ngram, cudaStream_t& stream, bool make_exp, bool debug) {
 
 
     unsigned int max_num_children = entries_per_node + 1;
@@ -439,14 +487,15 @@ void searchWrapperStream(unsigned char * btree_trie_mem, unsigned int * first_lv
         cudaEventCreate(&start);
         cudaEventCreate(&stop);
 
-        kernelTemplateWrapperDebug(btree_trie_mem, first_lvl, keys, num_ngram_queries, results, entries_per_node, max_num_children, max_ngram, stream, start, stop);
+        kernelTemplateWrapperDebug(btree_trie_mem, first_lvl, keys, num_ngram_queries, results, entries_per_node,
+         max_num_children, max_ngram, stream, start, stop, make_exp);
 
         float milliseconds = 0;
         cudaEventElapsedTime(&milliseconds, start, stop);
         printf("Searched for %d ngrams in: %f milliseconds.\n", num_ngram_queries, milliseconds);
         printf("Throughput: %d queries per second.\n", (int)((num_ngram_queries/(milliseconds))*1000));
     } else {
-        kernelTemplateWrapper(btree_trie_mem, first_lvl, keys, num_ngram_queries, results, entries_per_node, max_num_children, max_ngram, stream);
+        kernelTemplateWrapper(btree_trie_mem, first_lvl, keys, num_ngram_queries, results, entries_per_node, max_num_children, max_ngram, stream, make_exp);
     }
 }
 
@@ -466,17 +515,16 @@ void GPUSearcher::search(unsigned int * keys, unsigned int num_ngram_queries, fl
     }
 
     searchWrapperStream(btree_trie_gpu, first_lvl_gpu, keys, num_ngram_queries, results, lm.metadata.btree_node_size,
-     lm.metadata.max_ngram_order, streams[streamID], debug);
+     lm.metadata.max_ngram_order, streams[streamID], make_exp, debug);
 }
 
-GPUSearcher::GPUSearcher(int num, LM& lm_) : lm(lm_) {
+void GPUSearcher::gpuInit() {
     //Init GPU memory
     btree_trie_gpu = copyToGPUMemory(lm.trieByteArray.data(), lm.trieByteArray.size());
     first_lvl_gpu = copyToGPUMemory(lm.first_lvl.data(), lm.first_lvl.size());
 
-    num_streams = num;
     if (num_streams < 1) {
-        std::cerr << "You have specified " << num << " number of streams however it must be at least 1. Using 1 stream as default. Fix your code!" << std::endl;
+        std::cerr << "You have specified " << num_streams << " number of streams however it must be at least 1. Using 1 stream as default. Fix your code!" << std::endl;
         num_streams = 1;
     }
     streams = new cudaStream_t[num_streams];
@@ -485,21 +533,14 @@ GPUSearcher::GPUSearcher(int num, LM& lm_) : lm(lm_) {
     }
 }
 
-GPUSearcher::GPUSearcher(int num, LM& lm_, int gpuDeviceID) : lm(lm_) {
+GPUSearcher::GPUSearcher(int num, LM& lm_, bool make_exp_) : lm(lm_), num_streams(num), make_exp(make_exp_) {
+    gpuInit();
+}
+
+GPUSearcher::GPUSearcher(int num, LM& lm_, int gpuDeviceID, bool make_exp_) : lm(lm_), num_streams(num), make_exp(make_exp_) {
     setGPUDevice(gpuDeviceID);
     //Init GPU memory
-    btree_trie_gpu = copyToGPUMemory(lm.trieByteArray.data(), lm.trieByteArray.size());
-    first_lvl_gpu = copyToGPUMemory(lm.first_lvl.data(), lm.first_lvl.size());
-
-    num_streams = num;
-    if (num_streams < 1) {
-        std::cerr << "You have specified " << num << " number of streams however it must be at least 1. Using 1 stream as default. Fix your code!" << std::endl;
-        num_streams = 1;
-    }
-    streams = new cudaStream_t[num_streams];
-    for (int i = 0; i < num_streams; i++) {
-        CHECK_CALL(cudaStreamCreate(&streams[i]));
-    }
+    gpuInit();
 }
 
 GPUSearcher::~GPUSearcher() {
