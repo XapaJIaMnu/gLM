@@ -206,6 +206,15 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
 
                     current_btree_start = current_btree_start + *next_level*4;
 
+                    //Very rarely, mostly when having big datasets with small vocabulary
+                    //we will have tries that don't go to the last level. In this case
+                    //we just need to initiate backoff
+                    if (*next_level == 0 && key != 0) {
+                        current_ngram++; //We need to add one to the current_ngram because we actually found a match on this trie level
+                        goto backoff_notriecont; //it's the next trie level we are missing so in effect we say that this is the longest
+                    }                            //match and we need to calculate the backoff for the rest, similar to the case in the last_level
+
+
                     if (get_backoff) {
                         if (match_length_found < current_ngram) {
                             accumulated_score += *backoff;
@@ -213,6 +222,7 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
                     } else if (key == 0) {
                         accumulated_score += *prob;
                     }
+
                     break;
                 }
             }
@@ -223,15 +233,6 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
             updated_idx = current_btree_start + 4; //Update the index for the while loop
             //@TODO consider this for shared memory as oppposed to global mem broadcast to register
             size = *(unsigned int *)&btree_trie_mem[current_btree_start]; //The size of the current node to process.
-
-            //Very rarely, mostly when having big datasets with small vocabulary
-            //we will have tries that don't go to the last level. In this case
-            //we just need to initiate backoff
-            if (*next_level == 0) {
-                current_ngram++; //We need to add one to the current_ngram because we actually found a match on this trie level
-                goto backoff_notriecont; //it's the next trie level we are missing so in effect we say that this is the longest
-            }                            //match and we need to calculate the backoff for the rest, similar to the case in the last_level
-
 
             //Initialize shared variable
             if (i < 2) {
