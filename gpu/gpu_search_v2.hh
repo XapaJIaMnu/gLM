@@ -5,7 +5,7 @@
 
 //Wrapper to call on the gpu
 void searchWrapper(unsigned char * btree_trie_mem, unsigned int * first_lvl, unsigned int * keys, unsigned int num_ngram_queries,
- float * results, unsigned int entries_per_node, unsigned int max_ngram);
+ float * results, unsigned int entries_per_node, unsigned int max_ngram, bool debug = false);
 void searchWrapperStream(unsigned char * btree_trie_mem, unsigned int * first_lvl, unsigned int * keys,
  unsigned int num_ngram_queries, float * results, unsigned int entries_per_node, unsigned int max_ngram, cudaStream_t& stream, bool debug = false);
 
