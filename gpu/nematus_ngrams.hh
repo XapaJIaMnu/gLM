@@ -12,6 +12,7 @@ class NematusLM {
         LM lm;
 
         GPUSearcher engine;
+        bool debug;
 
         std::vector<float *> memory_tracker;
 
@@ -27,7 +28,7 @@ class NematusLM {
         //This vector contains the softmax vocabulary in order in gLM vocab format.
         std::vector<unsigned int> softmax_vocab_vec;
 
-        NematusLM(char *, char *, unsigned int, int);
+        NematusLM(char *, char *, unsigned int, int = 0, bool = false);
 
         unsigned short getMaxNumNgrams() {
             return lm.metadata.max_ngram_order;
@@ -53,7 +54,8 @@ class NematusLM {
         }
 };
 
-NematusLM::NematusLM(char * path, char * vocabFilePath, unsigned int maxGPUMemoryMB, int gpuDeviceID = 0) : lm(path), engine(1, lm, gpuDeviceID, true) {
+NematusLM::NematusLM(char * path, char * vocabFilePath, unsigned int maxGPUMemoryMB, int gpuDeviceID, bool debug_) :
+ lm(path), engine(1, lm, gpuDeviceID, true), debug(debug_) {
 
     //Total GPU memory allowed to use (in MB):
     gpuMemLimit = maxGPUMemoryMB;
@@ -161,14 +163,18 @@ float * NematusLM::processBatch(char * path_to_ngrams_file) {
 
     //Now we need to expand the queries. Basically every lm.metadata.max_ngram_order word (starting from the first)
     //needs to be replaced byt the full softmax layer
-    std::cerr << "Total memory required: " << orig_queries.size()*softmax_vocab_vec.size()*lm.metadata.max_ngram_order*4/(1024*1024) << " MB." << std::endl;
-    std::cerr << "We are allowed to use " << gpuMemLimit << "MB out of which the model takes: " << modelMemoryUsage << "MB leaving us with: "
-    << queryMemory << "MB to use for queries." << std::endl;
+    if (debug) {
+        std::cerr << "Total memory required: " << orig_queries.size()*softmax_vocab_vec.size()*lm.metadata.max_ngram_order*4/(1024*1024) << " MB." << std::endl;
+        std::cerr << "We are allowed to use " << gpuMemLimit << "MB out of which the model takes: " << modelMemoryUsage << "MB leaving us with: "
+        << queryMemory << "MB to use for queries." << std::endl;
+    }
     //Actually we can use a bit less than queryMemory for our queries, because we need to allocate an array on the GPU that will hold the results, so 
     //We need to calculate that now. Results memory is 1/max_ngram_order of the queryMemory (one float for every max_ngram_order vocab IDs)
     int queries_memory = (queryMemory*lm.metadata.max_ngram_order)/(lm.metadata.max_ngram_order + 1);
     int results_memory = queryMemory - queries_memory;
-    std::cerr << "Query memory: " << queries_memory << "MB. Results memory: " << results_memory << "MB." << std::endl;
+    if (debug) {
+        std::cerr << "Query memory: " << queries_memory << "MB. Results memory: " << results_memory << "MB." << std::endl;
+    }
 
     std::vector<unsigned int> all_queries;
     all_queries.reserve((queries_memory*1024*1024 +4)/4);

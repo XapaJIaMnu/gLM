@@ -352,9 +352,9 @@ inline void kernelTemplateWrapper(unsigned char * btree_trie_mem, unsigned int *
     if (max_ngram == 6) {
         if (entries_per_node == 31) {
             if (make_exp) {
-                gpuSearchBtree<32, 31, 6><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, identity());
-            } else {
                 gpuSearchBtree<32, 31, 6><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, exponentify());
+            } else {
+                gpuSearchBtree<32, 31, 6><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, identity());
             }
         } else { 
             printf("No template argument for node size %d and number of ngrams %d. If you want to use this configuration add it in %s:%d.\n",
