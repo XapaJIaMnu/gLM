@@ -1,8 +1,8 @@
 #include "fakeRNN.hh"
 #include <yaml-cpp/yaml.h>
 
-fakeRNN::fakeRNN(std::string glmPath, std::string vocabPath, int softmax_size, int gpuDeviceID, int gpuMem)
-  : lm(glmPath), engine(1, lm, gpuDeviceID), softmax_layer_size(softmax_size), gpuMemLimit(gpuMem) {
+fakeRNN::fakeRNN(std::string glmPath, std::string vocabPath, int softmax_size, int gpuDeviceID, int gpuMem, bool make_exp)
+  : lm(glmPath), engine(1, lm, gpuDeviceID, make_exp), softmax_layer_size(softmax_size), gpuMemLimit(gpuMem) {
 
     int modelMemoryUsage = lm.metadata.byteArraySize/(1024*1024) + (lm.metadata.intArraySize*4/(1024*1024)); //GPU memory used by the model in MB
 

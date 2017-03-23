@@ -53,7 +53,7 @@ class NematusLM {
         }
 };
 
-NematusLM::NematusLM(char * path, char * vocabFilePath, unsigned int maxGPUMemoryMB, int gpuDeviceID = 0) : lm(path), engine(1, lm, gpuDeviceID) {
+NematusLM::NematusLM(char * path, char * vocabFilePath, unsigned int maxGPUMemoryMB, int gpuDeviceID = 0) : lm(path), engine(1, lm, gpuDeviceID, true) {
 
     //Total GPU memory allowed to use (in MB):
     gpuMemLimit = maxGPUMemoryMB;

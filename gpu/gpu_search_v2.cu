@@ -348,10 +348,10 @@ __global__ void gpuSearchBtree(unsigned char * btree_trie_mem, unsigned int * fi
 */
 inline void kernelTemplateWrapper(unsigned char * btree_trie_mem, unsigned int * first_lvl, unsigned int * keys,
  unsigned int num_ngram_queries, float * results, unsigned int entries_per_node, unsigned int max_num_children,
-  unsigned int max_ngram, cudaStream_t& stream, bool exponent){
+  unsigned int max_ngram, cudaStream_t& stream, bool make_exp){
     if (max_ngram == 6) {
         if (entries_per_node == 31) {
-            if (exponent) {
+            if (make_exp) {
                 gpuSearchBtree<32, 31, 6><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, identity());
             } else {
                 gpuSearchBtree<32, 31, 6><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, exponentify());
@@ -363,19 +363,19 @@ inline void kernelTemplateWrapper(unsigned char * btree_trie_mem, unsigned int *
         }
     } else if (max_ngram == 5) {
         if (entries_per_node == 7) {
-            if (exponent) {
+            if (make_exp) {
                 gpuSearchBtree<8, 7, 5><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, exponentify());
             } else {
                 gpuSearchBtree<8, 7, 5><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, identity());
             }
         } else if (entries_per_node == 31) {
-            if (exponent) {
+            if (make_exp) {
                 gpuSearchBtree<32, 31, 5><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, exponentify());
             } else {
                 gpuSearchBtree<32, 31, 5><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, identity());
             }
         } else if (entries_per_node == 127) {
-            if (exponent) {
+            if (make_exp) {
                 gpuSearchBtree<128, 127, 5><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, exponentify());    
             } else {
                 gpuSearchBtree<128, 127, 5><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, identity());
@@ -387,19 +387,19 @@ inline void kernelTemplateWrapper(unsigned char * btree_trie_mem, unsigned int *
         }
     } else if (max_ngram == 4) {
         if (entries_per_node == 7) {
-            if (exponent) {
+            if (make_exp) {
                 gpuSearchBtree<8, 7, 4><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, exponentify());
             } else {
                 gpuSearchBtree<8, 7, 4><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, identity());
             }
         } else if (entries_per_node == 31) {
-            if (exponent) {
+            if (make_exp) {
                 gpuSearchBtree<32, 31, 4><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, exponentify());
             } else {
                 gpuSearchBtree<32, 31, 4><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, identity());
             }
         } else if (entries_per_node == 127) {
-            if (exponent) {
+            if (make_exp) {
                 gpuSearchBtree<128, 127, 4><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, exponentify());    
             } else {
                 gpuSearchBtree<128, 127, 4><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, identity());
@@ -411,19 +411,19 @@ inline void kernelTemplateWrapper(unsigned char * btree_trie_mem, unsigned int *
         }
     } else if ( max_ngram == 3) {
         if (entries_per_node == 7) {
-            if (exponent) {
+            if (make_exp) {
                 gpuSearchBtree<8, 7, 3><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, exponentify());
             } else {
                 gpuSearchBtree<8, 7, 3><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, identity());
             }
         } else if (entries_per_node == 31) {
-            if (exponent) {
+            if (make_exp) {
                 gpuSearchBtree<32, 31, 3><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, exponentify());
             } else {
                 gpuSearchBtree<32, 31, 3><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, identity());
             }
         } else if (entries_per_node == 127) {
-            if (exponent) {
+            if (make_exp) {
                 gpuSearchBtree<128, 127, 3><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, exponentify());    
             } else {
                 gpuSearchBtree<128, 127, 3><<<num_ngram_queries, max_num_children, 0, stream>>>(btree_trie_mem, first_lvl, keys, results, identity());            
@@ -442,9 +442,9 @@ inline void kernelTemplateWrapper(unsigned char * btree_trie_mem, unsigned int *
 
 inline void kernelTemplateWrapperDebug(unsigned char * btree_trie_mem, unsigned int * first_lvl, unsigned int * keys,
  unsigned int num_ngram_queries, float * results, unsigned int entries_per_node, unsigned int max_num_children,
-  unsigned int max_ngram, cudaStream_t& stream, cudaEvent_t &start, cudaEvent_t &stop, bool exponent){
+  unsigned int max_ngram, cudaStream_t& stream, cudaEvent_t &start, cudaEvent_t &stop, bool make_exp){
     cudaEventRecord(start);
-    kernelTemplateWrapper(btree_trie_mem, first_lvl,  keys, num_ngram_queries, results, entries_per_node, max_num_children, max_ngram, stream, exponent);
+    kernelTemplateWrapper(btree_trie_mem, first_lvl,  keys, num_ngram_queries, results, entries_per_node, max_num_children, max_ngram, stream, make_exp);
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
 }

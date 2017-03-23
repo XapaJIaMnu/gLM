@@ -15,7 +15,8 @@ class fakeRNN {
         int gpuMemLimit; //How much GPU memory in total can we use
         int queryMemory; //How much memory on the GPU can we use for queries
 
-        fakeRNN(std::string, std::string, int, int, int);
+        /*glmPath, vocabPath, softmax_size, gpuDeviceID, gpuMem, make_exp*/
+        fakeRNN(std::string, std::string, int, int, int, bool = true);
         void batchRNNQuery(std::vector<size_t>& input, unsigned int batch_size, float * gpuMemory);
         void decodeRNNQuery(std::vector<std::vector<int> >& input, unsigned int batch_size, float * gpuMemory);
         void loadVocab(const std::string& vocabPath);
