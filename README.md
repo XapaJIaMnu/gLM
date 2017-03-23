@@ -1,4 +1,4 @@
-# gLM 0.3
+# gLM 0.4
 gLM the GPU based Language Model is an ngram language model implementation that takes in an arpa file as an input, binarizes it and queries it in batch. More details about the design and implementation can be found in this [paper](http://aclweb.org/anthology/P/P16/P16-1183.pdf), published at ACL 2016.
 
 ## Build
@@ -68,3 +68,8 @@ Scheduling issue likely causes the low performance in 16 thread case. gLM achiev
   * Performance has improved ~2x compared to the previous release.
 * Version 0.3
   * Export example python bindings of the LM. 
+* Version 0.4
+  * Fix a rare issue that would cause crashes or incorrect ngrams with some small datasets.
+  * Provided a proper GPUSearcher class (look at gpu/gpu_search_v2.hh) that simplifies querying the LM.
+  * Allow for both probabilities and log probabilities to be returned when querying.
+  * C++ fakeRNN class to be used for integration inside some neuralMT toolkits.
