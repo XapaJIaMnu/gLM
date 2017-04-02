@@ -40,6 +40,7 @@ int main(int argc, char* argv[]) {
         if (num_keys > atoi(argv[3])) {
             //Flush
             std::vector<float> results = engine.search(keys, 0);
+            bool error = false;
             for (size_t i = 0; i < check_against.size(); i++) {
                 if (check_against[i] != results[i]) {
                     std::cerr << "Error! Expected: " << check_against[i] << ", got: " << results[i] << std::endl;
@@ -48,11 +49,16 @@ int main(int argc, char* argv[]) {
                         std::cerr << keys[j] << " ";
                     }
                     std::cerr << std::endl;
+                    error = true;
+                    break;
                 }
             }
             keys.clear();
             check_against.clear();
             num_keys = 0;
+            if (error) {
+                break;
+            }
         }
     }
 

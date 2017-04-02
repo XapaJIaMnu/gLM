@@ -28,3 +28,5 @@ target_link_libraries(gpu_search_v2
 cuda_add_library(memory_management_FPIC SHARED memory_management.cu)
 cuda_add_library(gpu_search_FPIC SHARED gpu_search.cu)
 cuda_add_library(gpu_search_v2_FPIC SHARED gpu_search_v2.cu)
+target_link_libraries(gpu_search_v2_FPIC
+                      memory_management_FPIC)
