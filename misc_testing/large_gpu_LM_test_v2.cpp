@@ -1,13 +1,13 @@
  #include "search_utilities_v2.hh"
 
 int main(int argc, char* argv[]) {
-    if (argc != 3 && argc != 4) {
-        std::cerr << "Usage: " << argv[0] << " path_to_arpafile path_to_binary_model [deviceID=0]" << std::endl;
+    if (argc != 4 && argc != 5) {
+        std::cerr << "Usage: " << argv[0] << " path_to_arpafile path_to_binary_model flush_value [deviceID=0]" << std::endl;
         std::exit(EXIT_FAILURE);
     }
     int deviceID = 0;
-    if (argc == 4) {
-        deviceID = atoi(argv[3]);
+    if (argc == 5) {
+        deviceID = atoi(argv[4]);
     }
     
     LM lm(argv[2]);
@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
         num_keys++;
         text2 = pesho2.readline();
 
-        if (num_keys > 200000000) {
+        if (num_keys > atoi(argv[3])) {
             //Flush
             std::vector<float> results = engine.search(keys, 0);
             for (size_t i = 0; i < check_against.size(); i++) {
