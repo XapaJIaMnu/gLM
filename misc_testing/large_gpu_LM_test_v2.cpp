@@ -17,12 +17,11 @@ int main(int argc, char* argv[]) {
     ArpaReader pesho2(argv[1]);
     processed_line text2 = pesho2.readline();
 
-    unsigned int num_keys = 0; //How many ngrams are we going to query
-
     std::vector<unsigned int> keys;
     std::vector<float> check_against;
 
     while (!text2.filefinished) {
+        unsigned int num_keys = 0; //How many ngrams are we going to query
         //Inefficient reallocation of keys_to_query. Should be done better
         int num_padded =  lm.metadata.max_ngram_order - text2.ngrams.size();
         for (int i = 0; i < num_padded; i++) {
