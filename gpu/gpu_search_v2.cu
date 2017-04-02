@@ -518,6 +518,31 @@ void GPUSearcher::search(unsigned int * keys, unsigned int num_ngram_queries, fl
      lm.metadata.max_ngram_order, streams[streamID], make_exp, debug);
 }
 
+std::vector<float> GPUSearcher::search(std::vector<unsigned int>& queries, int streamID, bool debug) {
+    if (streamID > num_streams - 1) {
+        std::cerr << "Provided stream greater than the available ones. Using stream 0 as default. Fix your code!" << std::endl;
+        streamID = 0;
+    }
+
+    unsigned int num_ngram_queries = queries.size()/lm.metadata.max_ngram_order; //Get how many ngram queries we have to do
+    unsigned int * gpuKeys = copyToGPUMemory(queries.data(), queries.size());
+    float * results;
+    allocateGPUMem(num_ngram_queries, &results);
+
+    searchWrapperStream(btree_trie_gpu, first_lvl_gpu, gpuKeys, num_ngram_queries, results, lm.metadata.btree_node_size,
+     lm.metadata.max_ngram_order, streams[streamID], make_exp, debug);
+
+    std::vector<float> cpuResults(num_ngram_queries);
+
+    copyToHostMemory(results, cpuResults.data(), num_ngram_queries);
+
+    //Free memory
+    freeGPUMemory(gpuKeys);
+    freeGPUMemory(results);
+
+    return cpuResults;
+}
+
 void GPUSearcher::gpuInit() {
     //Init GPU memory
     btree_trie_gpu = copyToGPUMemory(lm.trieByteArray.data(), lm.trieByteArray.size());

@@ -28,6 +28,7 @@ class GPUSearcher {
     public:
         LM& lm;
         void search(unsigned int * keys, unsigned int num_ngram_queries, float * results, int streamID, bool debug = false);
+        std::vector<float> search(std::vector<unsigned int>& queries, int streamID, bool debug = false);
         GPUSearcher(int, LM&, bool = false);
         GPUSearcher(int, LM&, int, bool = false);
         ~GPUSearcher();
