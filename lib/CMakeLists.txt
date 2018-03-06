@@ -1,7 +1,7 @@
 #Produce python linkable library:
 set(Python_ADDITIONAL_VERSIONS ${PYTHON_VER_FLAG})
 find_package(PythonLibs)
-if (${PYTHONLIBS_FOUND} AND DEFINED PYTHON_INCLUDE_DIR)
+if (${PYTHONLIBS_FOUND} AND DEFINED PYTHON_INCLUDE_DIR AND ${COMPILE_NEMATUS})
     find_package(Boost COMPONENTS serialization filesystem system python REQUIRED)
     add_library(ngrams_nematus SHARED python_bridge.cpp)
     if (DEFINED PYTHON_INCLUDE_DIR)

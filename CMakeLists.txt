@@ -3,8 +3,8 @@ project (gLM C CXX)
 
 set(DEBUGBUILD 0)
 set(BAD_HOST_FLAGS 0)
-set(GPU_COMPUTE_VER 52)
-set(PYTHON_VER_FLAG 2.7)
+set(GPU_COMPUTE_VER 61)
+set(PYTHON_VER_FLAG 2.2)
 
 #Fix GPU compilation on bad ubuntu systems
 if (DEFINED BAD_HOST)
@@ -35,10 +35,14 @@ else()
 endif()
 
 #Set python version to compile against
-if (DEFINED PYTHON_VER)
-    set(PYTHON_VER_FLAG ${PYTHON_VER})
+if (NOT DEFINED COMPILE_NEMATUS OR NOT ${COMPILE_NEMATUS})
+    set(COMPILE_NEMATUS 0)
+else()
+    if (DEFINED PYTHON_VER)
+        set(PYTHON_VER_FLAG ${PYTHON_VER})
+    endif()
+    message("Building against python version: ${PYTHON_VER_FLAG}")
 endif()
-message("Building against python version: ${PYTHON_VER_FLAG}")
 
 if(${DEBUGBUILD} EQUAL 1)
     SET (CMAKE_CXX_FLAGS                "-g -Wall")
